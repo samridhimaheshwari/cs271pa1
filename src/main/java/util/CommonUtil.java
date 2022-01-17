@@ -3,7 +3,6 @@ package util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
 import p2p.helpers.JSONHelper;
-import p2p.models.Peer;
 import yaml.Config;
 
 import java.io.*;

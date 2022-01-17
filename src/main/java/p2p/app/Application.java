@@ -2,14 +2,12 @@ package p2p.app;
 
 import java.io.IOException;
 
-import p2p.models.ChatApp;
-
-public class Chat {
+public class Application {
 
     public static void main(String[] args) {
 
         try {
-            ChatApp chat = new ChatApp();
+            Peer chat = new Peer();
             chat.acceptInputs();
         } catch (IOException e) {
            System.out.println(e);

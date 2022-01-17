@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-public class Peer {
+public class Client {
 	private String host;
 	private int port;
 	private Socket socket;
 
-	public Peer(String host, int port) {
+	public Client(String host, int port) {
 		this.host = host;
 		this.port = port;
 
