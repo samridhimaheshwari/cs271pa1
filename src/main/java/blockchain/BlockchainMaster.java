@@ -160,15 +160,15 @@ public class BlockchainMaster {
     }
 
     private String generateTransactionAborted() {
-        return JSONHelper.makeJson(Type.TRANSACT, myIP, listenPort, "TRANSACTION ABORTED DUE TO INSUFFICIENT BALANC").toJSONString();
+        return JSONHelper.makeJson(Type.MESSAGE, myIP, listenPort, "TRANSACTION ABORTED DUE TO INSUFFICIENT BALANC").toJSONString();
     }
 
     private String generateTransactionSuccessful() {
-        return JSONHelper.makeJson(Type.TRANSACT, myIP, listenPort, "TRANSACTION SUCCESSFUL").toJSONString();
+        return JSONHelper.makeJson(Type.MESSAGE, myIP, listenPort, "TRANSACTION SUCCESSFUL").toJSONString();
     }
 
     private String generateBalanceString(int balance) {
-        return JSONHelper.makeJson(Type.BALANCE, myIP, listenPort, balance).toJSONString();
+        return JSONHelper.makeJson(Type.MESSAGE, myIP, listenPort, "Balance is " + balance).toJSONString();
     }
 
     private void sendMessage(Peer peer, String jsonString) {
