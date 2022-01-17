@@ -1,8 +1,6 @@
 package p2p.models;
 
 import java.io.*;
-import java.lang.reflect.Constructor;
-import java.net.Inet4Address;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -16,6 +14,7 @@ import org.yaml.snakeyaml.Yaml;
 import p2p.helpers.JSONHelper;
 import p2p.helpers.Type;
 import p2p.helpers.Validator;
+import util.CommonUtil;
 import yaml.Config;
 
 public class ChatApp {
@@ -33,7 +32,7 @@ public class ChatApp {
 
     public ChatApp() throws IOException {
 
-        config = getConfig();
+        config = CommonUtil.getConfig();
 
         myIP = "169.231.195.21";
 
@@ -46,14 +45,6 @@ public class ChatApp {
         peerOutputMap = new HashMap<Peer, DataOutputStream>();
 
 
-    }
-    
-
-    // for testing purposes
-    public ChatApp(int port) throws IOException {
-        this();
-        listenPort = port;
-        listenSocket = new ServerSocket(listenPort);
     }
 
     /**
@@ -111,15 +102,17 @@ public class ChatApp {
                     Type type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
                     switch (type) {
                         case CONNECT:
-                            displayConnectSuccess(jsonStr);
+                            CommonUtil.displayConnectSuccess(jsonStr);
+                            addPeer(ip, port);
                             break;
                         case MESSAGE:
                             String message = JSONHelper.parse(jsonStr, "message");
-                            displayMessage(ip, port, message);
+                            CommonUtil.displayMessage(ip, port, message);
                             break;
                         case TERMINATE:
-                            displayTerminateMessage(ip, port);
-                            terminateConnection(findPeer(ip, port));
+                            Peer peer = findPeer(ip, port);
+                            CommonUtil.displayTerminateMessage(ip, port);
+                            CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
                             removePeer(findPeer(ip, port));
                             input.close();
                             return;
@@ -250,19 +243,6 @@ public class ChatApp {
         }
     }
 
-    // find the client on host's list (connectedPeers)
-    // and write to them a message
-    private void sendMessage(DataOutputStream stream, String jsonString) {
-        try {
-            // "\r\n" so when readLine() is called,
-            // it knows when to stop reading
-            stream.writeBytes(jsonString + "\r\n");
-
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-    }
-
 
     // create a socket, connect to peer
     private void connect(String ip, int port, boolean isServerConnection) throws IOException {
@@ -301,7 +281,7 @@ public class ChatApp {
 
             // tell the peer your host address and port number
             // tell the peer to connect to you
-            sendMessage(peerOutputMap.get(peer), generateConnectJson());
+            CommonUtil.sendMessage(peerOutputMap.get(peer), generateConnectJson());
         }
     }
 
@@ -315,8 +295,8 @@ public class ChatApp {
 
         // terminate each peer connection; notify them
         for (Peer peer : connectedPeers) {
-            sendMessage(peerOutputMap.get(peer), generateTerminateJson());
-            terminateConnection(peer);
+            CommonUtil.sendMessage(peerOutputMap.get(peer), generateTerminateJson());
+            CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
         }
 
         // close each output stream
@@ -392,37 +372,6 @@ public class ChatApp {
     }
 
     /**
-     * close the peer socket and output stream
-     *
-     * @param peer
-     */
-    private void terminateConnection(Peer peer) {
-        try {
-            peer.getSocket().close();
-            peerOutputMap.get(peer).close();
-        } catch (IOException e) {
-
-        }
-    }
-
-    /**
-     * display message received from peer along with their port and IP address
-     *
-     * @param ip
-     * @param port
-     * @param message
-     */
-    private void displayMessage(String ip, int port, String message) {
-        System.out.println("\nMessage received from IP: " + ip);
-        System.out.println("Sender's Port: " + port);
-        System.out.println("Message: " + message);
-
-        // "->" doesn't display after the user receive a
-        // message
-        System.out.print("-> ");
-    }
-
-    /**
      * display a notification that a client has connected to the host. create a
      * peer object, with peer's connection info, and add them to connectedPeers.
      * also add the peer to a map with an output stream object.
@@ -430,26 +379,10 @@ public class ChatApp {
      * @param jsonStr Stringify JSON object
      * @throws IOException
      */
-    private void displayConnectSuccess(String jsonStr) throws IOException {
-        String ip = JSONHelper.parse(jsonStr, "ip");
-        int port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
-        System.out.println("\nPeer [ip: " + ip + ", port: " + port + "] connects to you");
-        System.out.print("-> ");
-        // save peer's info, used for a lot of other stuff
+    private void addPeer(String ip, int port) throws IOException {
         Peer peer = new Peer(ip, port);
         connectedPeers.add(peer);
         peerOutputMap.put(peer, new DataOutputStream(peer.getSocket().getOutputStream()));
-    }
-
-    /**
-     * notify the user that a peer has drop the connection.
-     *
-     * @param
-     */
-    private void displayTerminateMessage(String ip, int port) {
-        System.out.println();
-        System.out.println("Peer [ip: " + ip + " port: " + port + "] has terminated the connection");
-        System.out.print("-> ");
     }
 
     /**
@@ -533,10 +466,9 @@ public class ChatApp {
 
             // tell the peer your host address and port number
             // tell the peer to connect to you
-            sendMessage(serverOutputStream, generateConnectJson());
+            CommonUtil.sendMessage(serverOutputStream, generateConnectJson());
         }
 
-        //connect(config.getServerIp(), config.getServerPort(), true);
     }
 
     /**
@@ -569,12 +501,6 @@ public class ChatApp {
         return ip.equals(myIP) && listenPort == port;
     }
 
-    // mostly used for testing purpose
-    public void setConnectedPeers(List<Peer> peers) {
-        if (peers.size() <= MAX_CONNECTIONS)
-            connectedPeers = peers;
-    }
-
     /**
      * Validate user input during the 'send' function. User input must be at
      * least 3 arguments separated by spaces. The second argument has to be a
@@ -592,7 +518,7 @@ public class ChatApp {
                     String msg = "";
                     for (int i = 2; i < args.length; i++)
                         msg += args[i] + " ";
-                    sendMessage(peerOutputMap.get(connectedPeers.get(id)), generateMessageJson(msg));
+                    CommonUtil.sendMessage(peerOutputMap.get(connectedPeers.get(id)), generateMessageJson(msg));
                 } else {
                     System.out.println("Error: Please select a valid peer id from the list command.");
                 }
@@ -608,7 +534,7 @@ public class ChatApp {
         if (server != null) {
             try {
                 if (true) {
-                    sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                    CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
                 } else {
                     System.out.println("Error: Please select a valid peer id from the list command.");
                 }
@@ -620,12 +546,12 @@ public class ChatApp {
         }
     }
 
-    private void  sendTransactionRequest(String choice) {
+    private void sendTransactionRequest(String choice) {
         if (server != null) {
             try {
                 String[] args = choice.split(" ");
-                if (args.length == 2) {
-                    sendMessage(server.getDataOutputStream(), generateTransactionJson(Integer.parseInt(args[1]), args[0]));
+                if (args.length == 3) {
+                    CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(Integer.parseInt(args[2]), args[1]));
                 } else {
                     System.out.println("Error: Please select a valid peer id from the list command.");
                 }
@@ -652,9 +578,9 @@ public class ChatApp {
                 if (isValidPeer(id)) {
                     // notify peer that connection will be drop
                     Peer peer = connectedPeers.get(id);
-                    sendMessage(peerOutputMap.get(peer), generateTerminateJson());
+                    CommonUtil.sendMessage(peerOutputMap.get(peer), generateTerminateJson());
                     System.out.println("You dropped peer [ip: " + peer.getHost() + " port: " + peer.getPort() + "]");
-                    terminateConnection(peer);
+                    CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
                     removePeer(peer);
                 } else {
                     System.out.println("Error: Please select a valid peer id from the list command.");
@@ -725,15 +651,5 @@ public class ChatApp {
             System.out.println("you are listening on port: " + listenPort);
             startServer();
         }
-    }
-    
-    private Config getConfig() throws FileNotFoundException {
-        Yaml yaml = new Yaml();
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        File file = new File(classLoader.getResource("config.yaml").getFile());
-        InputStream inputStream = new FileInputStream(file);
-        Map yamlMap = yaml.load(inputStream);
-        ObjectMapper mapper = new ObjectMapper(); // jackson's objectmapper
-        return mapper.convertValue(yamlMap, Config.class);
     }
 }
