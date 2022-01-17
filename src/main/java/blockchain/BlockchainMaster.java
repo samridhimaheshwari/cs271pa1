@@ -1,13 +1,13 @@
 package blockchain;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.yaml.snakeyaml.Yaml;
 import p2p.helpers.JSONHelper;
 import p2p.helpers.Type;
 import p2p.models.Peer;
+import yaml.Config;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.Inet4Address;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -18,6 +18,7 @@ import java.util.Map;
 
 public class BlockchainMaster {
 
+
     private List<Peer> connectedClients;
     private Blockchain blockchain;
     private String myIP;
@@ -26,8 +27,10 @@ public class BlockchainMaster {
     private final int MAX_CONNECTIONS = 3;
     private BufferedReader input;
     private Map<Peer, DataOutputStream> peerOutputMap;
+    private final Config config;
 
     public BlockchainMaster(ServerSocket serverSocket) throws IOException {
+        config = getConfig();
         blockchain = new Blockchain();
         listenSocket = serverSocket;
         myIP = Inet4Address.getLocalHost().getHostAddress();
@@ -86,12 +89,12 @@ public class BlockchainMaster {
 
                     // each JSON string received/written can be of 3 types
                     Type type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
+                    String clientId = String.valueOf(config.getProcessIds().get(ip));
                     switch (type) {
                         case CONNECT:
                             displayConnectSuccess(jsonStr);
                             break;
                         case TRANSACT:
-                            String clientId = GETFROMCONFIG(ip);
                             int amount = Integer.parseInt(JSONHelper.parse(jsonStr, "amount"));
                             String receiver = JSONHelper.parse(jsonStr, "receiver");
                             if(this.blockchain.getBalance(clientId)>=amount){
@@ -102,7 +105,6 @@ public class BlockchainMaster {
                             }
                             break;
                         case BALANCE:
-                            String clientId = GETFROMCONFIG(ip);
                             displayBalanceMessage(ip, this.blockchain.getBalance(clientId));
                             break;
                         case TERMINATE:
@@ -233,5 +235,15 @@ public class BlockchainMaster {
         ServerSocket serverSocket = new ServerSocket(1234);
         BlockchainMaster server = new BlockchainMaster(serverSocket);
         server.startServer();
+    }
+
+    private Config getConfig() throws FileNotFoundException {
+        Yaml yaml = new Yaml();
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        File file = new File(classLoader.getResource("config.yaml").getFile());
+        InputStream inputStream = new FileInputStream(file);
+        Map yamlMap = yaml.load(inputStream);
+        ObjectMapper mapper = new ObjectMapper(); // jackson's objectmapper
+        return mapper.convertValue(yamlMap, Config.class);
     }
 }
