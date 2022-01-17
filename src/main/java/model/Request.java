@@ -1,21 +1,27 @@
 package model;
 
+import p2p.helpers.Type;
+
 import java.io.Serializable;
 
 public class Request implements Serializable {
         LamportClock lamportClock;
-        String message;
+        Type message;
 
-    public Request(LamportClock lamportClock, String message) {
+
+    public Request(LamportClock lamportClock, Type message) {
         this.lamportClock = lamportClock;
         this.message = message;
     }
 
+    public void setMessage(String message) {
+
+    }
     public LamportClock getLamportClock() {
         return lamportClock;
     }
 
-    public String getMessage() {
+    public Type getMessage() {
         return message;
     }
 }
