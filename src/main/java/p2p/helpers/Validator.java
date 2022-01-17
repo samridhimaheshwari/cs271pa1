@@ -40,9 +40,7 @@ public class Validator {
      * @return true if user provides logical inputs to make a connection with a
      *         socket
      */
-    public static boolean isValidConnect(String input) {
-        String[] args = input.split(" ");
-        return args.length == 3 && args[0].equals("connect")
-                && Validator.isValidPort(args[2]);
+    public static boolean isValidConnect(String input, String port) {
+        return input.equals("connect-clients") && Validator.isValidPort(port);
     }
 }
