@@ -1,4 +1,4 @@
-package p2p.models;
+package p2p.app;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -8,41 +8,40 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.yaml.snakeyaml.Yaml;
 import p2p.helpers.JSONHelper;
 import p2p.helpers.Type;
 import p2p.helpers.Validator;
+import p2p.models.Client;
+import p2p.models.Server;
 import util.CommonUtil;
 import yaml.Config;
 
-public class ChatApp {
+public class Peer {
 
-    private List<Peer> connectedPeers;
+    private List<Client> connectedClients;
     private Integer listenPort;
     private String myIP;
     private ServerSocket listenSocket;
     private final int MAX_CONNECTIONS = 3;
     private BufferedReader input;
-    private Map<Peer, DataOutputStream> peerOutputMap;
+    private Map<Client, DataOutputStream> peerOutputMap;
     private Server server;
     private final Config config;
 
 
-    public ChatApp() throws IOException {
+    public Peer() throws IOException {
 
         config = CommonUtil.getConfig();
 
         myIP = "169.231.195.21";
 
         // list of all clients (peers) connected to this host
-        connectedPeers = new ArrayList<Peer>();
+        connectedClients = new ArrayList<Client>();
 
         input = new BufferedReader(new InputStreamReader(System.in));
 
         // map a peer to an output stream
-        peerOutputMap = new HashMap<Peer, DataOutputStream>();
+        peerOutputMap = new HashMap<Client, DataOutputStream>();
 
 
     }
@@ -110,7 +109,7 @@ public class ChatApp {
                             CommonUtil.displayMessage(ip, port, message);
                             break;
                         case TERMINATE:
-                            Peer peer = findPeer(ip, port);
+                            Client peer = findPeer(ip, port);
                             CommonUtil.displayTerminateMessage(ip, port);
                             CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
                             removePeer(findPeer(ip, port));
@@ -231,15 +230,15 @@ public class ChatApp {
 
     // display the list of peers that are connected to the host
     private void displayList() {
-        if (connectedPeers.isEmpty())
+        if (connectedClients.isEmpty())
             System.out.println("No peers connected.");
         else {
             System.out.println("id:   IP Address     Port No.");
-            for (int i = 0; i < connectedPeers.size(); i++) {
-                Peer peer = connectedPeers.get(i);
+            for (int i = 0; i < connectedClients.size(); i++) {
+                Client peer = connectedClients.get(i);
                 System.out.println((i + 1) + "    " + peer.getHost() + "     " + peer.getPort());
             }
-            System.out.println("Total Peers: " + connectedPeers.size());
+            System.out.println("Total Peers: " + connectedClients.size());
         }
     }
 
@@ -272,8 +271,8 @@ public class ChatApp {
             System.out.println("connection was unsuccessful, please try again later");
         } else {
             System.out.println("connected to " + ip + " " + port);
-            Peer peer = new Peer(ip, port);
-            connectedPeers.add(peer);
+            Client peer = new Client(ip, port);
+            connectedClients.add(peer);
 
             // map this peer to an output stream
 
@@ -294,13 +293,13 @@ public class ChatApp {
     private void breakPeerConnections() throws IOException {
 
         // terminate each peer connection; notify them
-        for (Peer peer : connectedPeers) {
+        for (Client peer : connectedClients) {
             CommonUtil.sendMessage(peerOutputMap.get(peer), generateTerminateJson());
             CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
         }
 
         // close each output stream
-        for (Entry<Peer, DataOutputStream> e : peerOutputMap.entrySet()) {
+        for (Entry<Client, DataOutputStream> e : peerOutputMap.entrySet()) {
             e.getValue().close();
         }
 
@@ -313,8 +312,8 @@ public class ChatApp {
      *
      * @param peer
      */
-    private void removePeer(Peer peer) {
-        connectedPeers.remove(peer);
+    private void removePeer(Client peer) {
+        connectedClients.remove(peer);
         peerOutputMap.remove(peer);
     }
 
@@ -354,7 +353,7 @@ public class ChatApp {
 
     // id = index, thus 0 to size() - 1
     private boolean isValidPeer(int id) {
-        return id >= 0 && id < connectedPeers.size();
+        return id >= 0 && id < connectedClients.size();
     }
 
     /**
@@ -364,8 +363,8 @@ public class ChatApp {
      * number. if no peer exist with the corresponding information, will
      * return null instead
      */
-    private Peer findPeer(String ip, int port) {
-        for (Peer p : connectedPeers)
+    private Client findPeer(String ip, int port) {
+        for (Client p : connectedClients)
             if (p.getHost().equals(ip) && p.getPort() == port)
                 return p;
         return null;
@@ -380,8 +379,8 @@ public class ChatApp {
      * @throws IOException
      */
     private void addPeer(String ip, int port) throws IOException {
-        Peer peer = new Peer(ip, port);
-        connectedPeers.add(peer);
+        Client peer = new Client(ip, port);
+        connectedClients.add(peer);
         peerOutputMap.put(peer, new DataOutputStream(peer.getSocket().getOutputStream()));
     }
 
@@ -409,7 +408,7 @@ public class ChatApp {
             }
 
             // check if connection limited is exceeded
-            if (connectedPeers.size() >= MAX_CONNECTIONS) {
+            if (connectedClients.size() >= MAX_CONNECTIONS) {
                 System.out.println("connect fail: max connection");
                 return;
             }
@@ -518,7 +517,7 @@ public class ChatApp {
                     String msg = "";
                     for (int i = 2; i < args.length; i++)
                         msg += args[i] + " ";
-                    CommonUtil.sendMessage(peerOutputMap.get(connectedPeers.get(id)), generateMessageJson(msg));
+                    CommonUtil.sendMessage(peerOutputMap.get(connectedClients.get(id)), generateMessageJson(msg));
                 } else {
                     System.out.println("Error: Please select a valid peer id from the list command.");
                 }
@@ -577,7 +576,7 @@ public class ChatApp {
                 int id = Integer.valueOf(args[1]) - 1;
                 if (isValidPeer(id)) {
                     // notify peer that connection will be drop
-                    Peer peer = connectedPeers.get(id);
+                    Client peer = connectedClients.get(id);
                     CommonUtil.sendMessage(peerOutputMap.get(peer), generateTerminateJson());
                     System.out.println("You dropped peer [ip: " + peer.getHost() + " port: " + peer.getPort() + "]");
                     CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
