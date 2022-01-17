@@ -1,10 +1,9 @@
 package blockchain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.yaml.snakeyaml.Yaml;
 import p2p.helpers.JSONHelper;
 import p2p.helpers.Type;
 import p2p.models.Peer;
+import util.CommonUtil;
 import yaml.Config;
 
 import java.io.*;
@@ -26,11 +25,11 @@ public class BlockchainMaster {
     private int listenPort = 1234;
     private final int MAX_CONNECTIONS = 3;
     private BufferedReader input;
-    private Map<Peer, DataOutputStream> peerOutputMap;
+    private Map<Peer, DataOutputStream> clientOutputMap;
     private final Config config;
 
     public BlockchainMaster(ServerSocket serverSocket) throws IOException {
-        config = getConfig();
+        config = CommonUtil.getConfig();
         blockchain = new Blockchain();
         listenSocket = serverSocket;
         myIP = Inet4Address.getLocalHost().getHostAddress();
@@ -41,7 +40,7 @@ public class BlockchainMaster {
         input = new BufferedReader(new InputStreamReader(System.in));
 
         // map a peer to an output stream
-        peerOutputMap = new HashMap<Peer, DataOutputStream>();
+        clientOutputMap = new HashMap<Peer, DataOutputStream>();
     }
 
     private void startServer() throws IOException {
@@ -92,7 +91,8 @@ public class BlockchainMaster {
                     String clientId = String.valueOf(config.getProcessIds().get(ip));
                     switch (type) {
                         case CONNECT:
-                            displayConnectSuccess(jsonStr);
+                            CommonUtil.displayConnectSuccess(jsonStr);
+                            addClient(ip, port);
                             break;
                         case TRANSACT:
                             int amount = Integer.parseInt(JSONHelper.parse(jsonStr, "amount"));
@@ -108,10 +108,13 @@ public class BlockchainMaster {
                             displayBalanceMessage(ip, this.blockchain.getBalance(clientId));
                             break;
                         case TERMINATE:
-                            displayTerminateMessage(ip, port);
-                            terminateConnection(findClient(ip, port));
-                            removeClient(findClient(ip, port));
-                            input.close();
+                            Peer peer = findClient(ip, port);
+                            if (peer!=null) {
+                                CommonUtil.displayTerminateMessage(ip, port);
+                                CommonUtil.terminateConnection(peer.getSocket(), clientOutputMap.get(peer));
+                                removeClient(peer);
+                                input.close();
+                            }
                             return;
                     }
                 }
@@ -122,41 +125,30 @@ public class BlockchainMaster {
     }
 
     private void displayTransactSuccess(String ip) {
-        Peer peer = null;
-        for(Peer p: peerOutputMap.keySet()){
-            if(p.getHost().equals(ip)){
-                peer = p;
-                break;
-            }
-        }
+        Peer peer = findPeer(ip);
+        if (peer != null) CommonUtil.sendMessage(clientOutputMap.get(peer), generateTransactionSuccessful());
 
-        sendMessage(peer, generateTransactionSuccessful());
     }
 
     private void displayTransactionAborted(String ip) {
-        Peer peer = null;
-        for(Peer p: peerOutputMap.keySet()){
-            if(p.getHost().equals(ip)){
-                peer = p;
-                break;
-            }
-        }
-
-        sendMessage(peer, generateTransactionAborted());
+        Peer peer = findPeer(ip);
+        CommonUtil.sendMessage(clientOutputMap.get(peer), generateTransactionAborted());
     }
 
-
-
     private void displayBalanceMessage(String ip, int balance) {
+        Peer peer = findPeer(ip);
+        CommonUtil.sendMessage(clientOutputMap.get(peer), generateBalanceString(balance));
+    }
+
+    private Peer findPeer(String ip) {
         Peer peer = null;
-        for(Peer p: peerOutputMap.keySet()){
+        for(Peer p: clientOutputMap.keySet()){
             if(p.getHost().equals(ip)){
                 peer = p;
                 break;
             }
         }
-
-        sendMessage(peer, generateBalanceString(balance));
+        return peer;
     }
 
     private String generateTransactionAborted() {
@@ -171,26 +163,10 @@ public class BlockchainMaster {
         return JSONHelper.makeJson(Type.MESSAGE, myIP, listenPort, "Balance is " + balance).toJSONString();
     }
 
-    private void sendMessage(Peer peer, String jsonString) {
-        try {
-            // "\r\n" so when readLine() is called,
-            // it knows when to stop reading
-            peerOutputMap.get(peer).writeBytes(jsonString + "\r\n");
-
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-    }
-
-    private void displayConnectSuccess(String jsonStr) throws IOException {
-        String ip = JSONHelper.parse(jsonStr, "ip");
-        int port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
-        System.out.println("\nPeer [ip: " + ip + ", port: " + port + "] connects to you");
-        System.out.print("-> ");
-        // save peer's info, used for a lot of other stuff
+    private void addClient(String ip, int port) throws IOException {
         Peer peer = new Peer(ip, port);
         connectedClients.add(peer);
-        peerOutputMap.put(peer, new DataOutputStream(peer.getSocket().getOutputStream()));
+        clientOutputMap.put(peer, new DataOutputStream(peer.getSocket().getOutputStream()));
     }
 
     private Peer findClient(String ip, int port) {
@@ -202,48 +178,12 @@ public class BlockchainMaster {
 
     private void removeClient(Peer peer) {
         connectedClients.remove(peer);
-        peerOutputMap.remove(peer);
+        clientOutputMap.remove(peer);
     }
-
-    private void displayMessage(String ip, int port, String message) {
-        System.out.println("\nMessage received from IP: " + ip);
-        System.out.println("Sender's Port: " + port);
-        System.out.println("Message: " + message);
-
-        // "->" doesn't display after the user receive a
-        // message
-        System.out.print("-> ");
-    }
-
-    private void terminateConnection(Peer peer) {
-        try {
-            peer.getSocket().close();
-            peerOutputMap.get(peer).close();
-        } catch (IOException e) {
-
-        }
-    }
-
-    private void displayTerminateMessage(String ip, int port) {
-        System.out.println();
-        System.out.println("Peer [ip: " + ip + " port: " + port + "] has terminated the connection");
-        System.out.print("-> ");
-    }
-
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(1234);
         BlockchainMaster server = new BlockchainMaster(serverSocket);
         server.startServer();
-    }
-
-    private Config getConfig() throws FileNotFoundException {
-        Yaml yaml = new Yaml();
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        File file = new File(classLoader.getResource("config.yaml").getFile());
-        InputStream inputStream = new FileInputStream(file);
-        Map yamlMap = yaml.load(inputStream);
-        ObjectMapper mapper = new ObjectMapper(); // jackson's objectmapper
-        return mapper.convertValue(yamlMap, Config.class);
     }
 }
