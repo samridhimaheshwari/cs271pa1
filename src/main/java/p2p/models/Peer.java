@@ -5,7 +5,6 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 public class Peer {
-
 	private String host;
 	private int port;
 	private Socket socket;
