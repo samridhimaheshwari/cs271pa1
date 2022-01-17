@@ -1,13 +1,23 @@
 package blockchain;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 public class Blockchain {
     ArrayList<Block> blocks;
 
+    Blockchain(){
+        blocks  = new ArrayList<>();
+    }
 
     public void addBlock(String sender, String receiver, int amount){
-        byte[] previousHash = blocks.get(blocks.size()-1).getPreviousHash();
+        byte[] previousHash;
+        if(blocks.size()-1>=0) {
+             previousHash = blocks.get(blocks.size() - 1).getPreviousHash();
+        } else{
+             previousHash = new byte[256];
+            new Random().nextBytes(previousHash);
+        }
         Block newBlock = new Block(sender, receiver, amount, previousHash);
         blocks.add(newBlock);
     }
