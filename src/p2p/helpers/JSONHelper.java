@@ -1,7 +1,6 @@
-package helpers;
+package p2p.helpers;
 
 import org.json.simple.JSONObject;
-import helpers.Type;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 

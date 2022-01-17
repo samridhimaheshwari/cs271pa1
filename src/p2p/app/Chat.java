@@ -1,8 +1,8 @@
-package app;
+package p2p.app;
 
 import java.io.IOException;
 
-import models.ChatApp;
+import p2p.models.ChatApp;
 
 public class Chat {
 

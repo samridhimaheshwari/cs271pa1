@@ -1,4 +1,4 @@
-package models;
+package p2p.models;
 
 import java.io.IOException;
 import java.net.Socket;

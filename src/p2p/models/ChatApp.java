@@ -1,4 +1,4 @@
-package models;
+package p2p.models;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -13,9 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import helpers.JSONHelper;
-import helpers.Type;
-import helpers.Validator;
+import p2p.helpers.JSONHelper;
+import p2p.helpers.Type;
+import p2p.helpers.Validator;
 
 public class ChatApp {
 
@@ -30,7 +30,7 @@ public class ChatApp {
 
 	public ChatApp() throws IOException {
 	    
-	    myIP = "169.231.195.21";
+	    myIP = Inet4Address.getLocalHost().getHostAddress();
 	    
 		// list of all clients (peers) connected to this host
 		connectedPeers = new ArrayList<Peer>();
@@ -619,7 +619,7 @@ public class ChatApp {
 
 		if (listenSocket != null) {
 			listenPort = listenSocket.getLocalPort();
-			myIP = "169.231.195.21";
+			myIP = Inet4Address.getLocalHost().getHostAddress();
 			System.out.println("you are listening on port: " + listenPort);
 			startServer();
 		}
