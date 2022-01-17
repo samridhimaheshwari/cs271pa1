@@ -1,21 +1,19 @@
 package models;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.Inet4Address;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import helpers.JSONHelper;
 import helpers.Type;
 import helpers.Validator;
+import org.yaml.snakeyaml.Yaml;
+import util.LamportClock;
+import util.Request;
+import yaml.Config;
 
 public class ChatApp {
 
@@ -26,11 +24,20 @@ public class ChatApp {
 	private final int MAX_CONNECTIONS = 3;
 	private BufferedReader input;
 	private Map<Peer, DataOutputStream> peerOutputMap;
+	private PriorityQueue<Request> requestQueue;
+	private LamportClock lamportClock;
+	int processId;
+	private Yaml yaml;
 
 
 	public ChatApp() throws IOException {
-	    
-	    myIP = "169.231.195.21";
+
+		//get IP Address of Self, processId, and IP addresses of other clients from configuration file
+
+		yaml = new Yaml();
+		InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream("/yaml/config.yaml");
+		Config config = yaml.load(inputStream);
+		myIP = "169.231.195.21";
 	    
 		// list of all clients (peers) connected to this host
 		connectedPeers = new ArrayList<Peer>();
@@ -39,6 +46,8 @@ public class ChatApp {
 
 		// map a peer to an output stream
 		peerOutputMap = new HashMap<Peer, DataOutputStream>();
+
+		lamportClock = new LamportClock(config.getProcessId());
 	}
 
 	// for testing purposes
