@@ -206,6 +206,18 @@ public class ChatApp {
                     else
                         processSend(choice);
                     break;
+                case "balance":
+                    if (listenSocket == null)
+                        System.out.println("Error: you are not connected");
+                    else
+                        sendBalanceRequest();
+                    break;
+                case "transaction":
+                    if (listenSocket == null)
+                        System.out.println("Error: you are not connected");
+                    else
+                        sendTransactionRequest(choice);
+                    break;
                 case "terminate":
                     if (listenSocket == null)
                         System.out.println("Error: you are not connected");
@@ -221,6 +233,8 @@ public class ChatApp {
             }
         }
     }
+
+
 
     // display the list of peers that are connected to the host
     private void displayList() {
@@ -340,6 +354,14 @@ public class ChatApp {
      */
     private String generateMessageJson(String message) {
         return JSONHelper.makeJson(Type.MESSAGE, myIP, listenPort, message).toJSONString();
+    }
+
+    private String generateBalanceJson() {
+        return JSONHelper.makeJson(Type.BALANCE, myIP, listenPort).toJSONString();
+    }
+
+    private String generateTransactionJson(int amount, String receiver) {
+        return JSONHelper.makeJson(Type.TRANSACT, myIP, listenPort, amount, receiver).toJSONString();
     }
 
     /**
@@ -571,6 +593,39 @@ public class ChatApp {
                     for (int i = 2; i < args.length; i++)
                         msg += args[i] + " ";
                     sendMessage(peerOutputMap.get(connectedPeers.get(id)), generateMessageJson(msg));
+                } else {
+                    System.out.println("Error: Please select a valid peer id from the list command.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Error: Second argument should be a integer.");
+            }
+        } else {
+            System.out.println("Error: Invalid format for 'send' command. See 'help' for details.");
+        }
+    }
+
+    private void sendBalanceRequest() {
+        if (server != null) {
+            try {
+                if (true) {
+                    sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                } else {
+                    System.out.println("Error: Please select a valid peer id from the list command.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Error: Second argument should be a integer.");
+            }
+        } else {
+            System.out.println("Error: Invalid format for 'send' command. See 'help' for details.");
+        }
+    }
+
+    private void  sendTransactionRequest(String choice) {
+        if (server != null) {
+            try {
+                String[] args = choice.split(" ");
+                if (args.length == 2) {
+                    sendMessage(server.getDataOutputStream(), generateTransactionJson(Integer.parseInt(args[1]), args[0]));
                 } else {
                     System.out.println("Error: Please select a valid peer id from the list command.");
                 }

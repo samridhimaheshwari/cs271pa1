@@ -53,6 +53,14 @@ public class JSONHelper {
         return jsonObject;
     }
 
+    public static JSONObject makeJson(Type type, String ip, int port,
+                                      int amount, String receiver) {
+        JSONObject jsonObject = makeJson(type, ip, port);
+        jsonObject.put("amount", amount);
+        jsonObject.put("receiver", receiver);
+        return jsonObject;
+    }
+
 
     public static JSONObject makeJson(Type type, String ip, int port) {
         JSONObject jsonObject = new JSONObject();
