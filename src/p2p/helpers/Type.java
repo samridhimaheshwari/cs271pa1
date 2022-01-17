@@ -1,4 +1,4 @@
-package helpers;
+package p2p.helpers;
 
 public enum Type {
     CONNECT, MESSAGE, TERMINATE
