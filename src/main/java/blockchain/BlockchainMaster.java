@@ -19,14 +19,16 @@ import java.util.Map;
 public class BlockchainMaster {
 
     private List<Peer> connectedClients;
-
+    private Blockchain blockchain;
     private String myIP;
     private ServerSocket listenSocket;
+    private int listenPort = 1234;
     private final int MAX_CONNECTIONS = 3;
     private BufferedReader input;
     private Map<Peer, DataOutputStream> peerOutputMap;
 
     public BlockchainMaster(ServerSocket serverSocket) throws IOException {
+        blockchain = new Blockchain();
         listenSocket = serverSocket;
         myIP = Inet4Address.getLocalHost().getHostAddress();
 
@@ -45,7 +47,7 @@ public class BlockchainMaster {
             try {
                 Socket connectionSocket = listenSocket.accept();
                 // once there is a connection, serve them on thread
-                new Thread(new ClientHandler(connectionSocket)).start();
+                new Thread(new ClientHandler(connectionSocket, blockchain)).start();
 
             } catch (IOException e) {
 
@@ -57,9 +59,11 @@ public class BlockchainMaster {
     private class ClientHandler implements Runnable {
 
         private Socket clientSocket;
+        private Blockchain blockchain;
 
-        public ClientHandler(Socket socket) {
+        public ClientHandler(Socket socket, Blockchain blockchain) {
             this.clientSocket = socket;
+            this.blockchain = blockchain;
         }
 
         public void run() {
@@ -86,14 +90,25 @@ public class BlockchainMaster {
                         case CONNECT:
                             displayConnectSuccess(jsonStr);
                             break;
-                        case MESSAGE:
-                            String message = JSONHelper.parse(jsonStr, "message");
-                            displayMessage(ip, port, message);
+                        case TRANSACT:
+                            String clientId = GETFROMCONFIG(ip);
+                            int amount = Integer.parseInt(JSONHelper.parse(jsonStr, "amount"));
+                            String receiver = JSONHelper.parse(jsonStr, "receiver");
+                            if(this.blockchain.getBalance(clientId)>=amount){
+                                this.blockchain.addBlock(clientId, receiver, amount);
+                                displayTransactSuccess(ip);
+                            } else{
+                                displayTransactionAborted(ip);
+                            }
+                            break;
+                        case BALANCE:
+                            String clientId = GETFROMCONFIG(ip);
+                            displayBalanceMessage(ip, this.blockchain.getBalance(clientId));
                             break;
                         case TERMINATE:
                             displayTerminateMessage(ip, port);
                             terminateConnection(findClient(ip, port));
-                            removePeer(findClient(ip, port));
+                            removeClient(findClient(ip, port));
                             input.close();
                             return;
                     }
@@ -101,6 +116,67 @@ public class BlockchainMaster {
             } catch (IOException e) {
                 System.out.println("Message: Connection drop");
             }
+        }
+    }
+
+    private void displayTransactSuccess(String ip) {
+        Peer peer = null;
+        for(Peer p: peerOutputMap.keySet()){
+            if(p.getHost().equals(ip)){
+                peer = p;
+                break;
+            }
+        }
+
+        sendMessage(peer, generateTransactionSuccessful());
+    }
+
+    private void displayTransactionAborted(String ip) {
+        Peer peer = null;
+        for(Peer p: peerOutputMap.keySet()){
+            if(p.getHost().equals(ip)){
+                peer = p;
+                break;
+            }
+        }
+
+        sendMessage(peer, generateTransactionAborted());
+    }
+
+
+
+    private void displayBalanceMessage(String ip, int balance) {
+        Peer peer = null;
+        for(Peer p: peerOutputMap.keySet()){
+            if(p.getHost().equals(ip)){
+                peer = p;
+                break;
+            }
+        }
+
+        sendMessage(peer, generateBalanceString(balance));
+    }
+
+    private String generateTransactionAborted() {
+        return JSONHelper.makeJson(Type.TRANSACT, myIP, listenPort, "TRANSACTION ABORTED DUE TO INSUFFICIENT BALANC").toJSONString();
+    }
+
+    private String generateTransactionSuccessful() {
+        return JSONHelper.makeJson(Type.TRANSACT, myIP, listenPort, "TRANSACTION SUCCESSFUL").toJSONString();
+    }
+
+    private String generateBalanceString(int balance) {
+        return JSONHelper.makeJson(Type.BALANCE, myIP, listenPort, balance).toJSONString();
+    }
+
+    private void sendMessage(Peer peer, String jsonString) {
+        try {
+            // "\r\n" so when readLine() is called,
+            // it knows when to stop reading
+            peerOutputMap.get(peer).writeBytes(jsonString + "\r\n");
+
+        } catch (Exception e) {
+            System.out.println(e);
         }
     }
 
@@ -122,7 +198,7 @@ public class BlockchainMaster {
         return null;
     }
 
-    private void removePeer(Peer peer) {
+    private void removeClient(Peer peer) {
         connectedClients.remove(peer);
         peerOutputMap.remove(peer);
     }
