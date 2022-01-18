@@ -6,6 +6,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +28,7 @@ public class PeerService {
     private String myIP;
     private ServerSocket listenSocket;
     private final int MAX_CONNECTIONS = 3;
-    private final int WAIT = 3000;
+    private final int WAIT = 3;
     private BufferedReader input;
     private Map<Client, DataOutputStream> peerOutputMap;
     private Server server;
@@ -152,10 +153,10 @@ public class PeerService {
                                 if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                     lamportClock.setClock(lamportClock.getClock() + 1);
                                     if (m.getType() == Type.BALANCE) {
-                                        Thread.sleep(WAIT);
+                                        TimeUnit.SECONDS.sleep(WAIT);
                                         CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
                                     } else if (m.getType() == Type.TRANSACTION) {
-                                        Thread.sleep(WAIT);
+                                        TimeUnit.SECONDS.sleep(WAIT);
                                         CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
                                     }
                                 }
@@ -174,11 +175,11 @@ public class PeerService {
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
                                         if (requests.get(getIdFromClock(head)).getType() == Type.BALANCE) {
-                                            Thread.sleep(WAIT);
+                                            TimeUnit.SECONDS.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
                                         } else if (requests.get(getIdFromClock(head)).getType() == Type.TRANSACTION) {
                                             Message msg = requests.get(getIdFromClock(head));
-                                            Thread.sleep(WAIT);
+                                            TimeUnit.SECONDS.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(msg.getAmount(), msg.getReceiver()));
                                         }
                                     }
@@ -208,10 +209,10 @@ public class PeerService {
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
                                         if (m.getType() == Type.BALANCE) {
-                                            Thread.sleep(WAIT);
+                                            TimeUnit.SECONDS.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
                                         } else if (m.getType() == Type.TRANSACTION) {
-                                            Thread.sleep(WAIT);
+                                            TimeUnit.SECONDS.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
                                         }
                                     }
@@ -238,7 +239,7 @@ public class PeerService {
     private void sendReplyToPeer(Request request, Client peer) throws JsonProcessingException, InterruptedException {
         ObjectMapper objectMapper = new ObjectMapper();
         String message = JSONHelper.makeRequestJson(Type.REPLY, myIP, listenPort, objectMapper.writeValueAsString(request)).toJSONString();
-        Thread.sleep(WAIT);
+        TimeUnit.SECONDS.sleep(WAIT);
         System.out.println("Sent Reply Message to Client: " + config.getProcessIds().get(peer.getHost()));
         CommonUtil.sendMessage(peerOutputMap.get(peer), message);
     }
@@ -593,7 +594,7 @@ public class PeerService {
         ObjectMapper objectMapper = new ObjectMapper();
         String message = JSONHelper.makeRequestJson(Type.REQUEST, myIP, listenPort, objectMapper.writeValueAsString(request)).toJSONString();
         for (Client client: connectedClients) {
-            Thread.sleep(WAIT);
+            TimeUnit.SECONDS.sleep(WAIT);
             System.out.println("Sent Request Message to Client: " + config.getProcessIds().get(client.getHost()));
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
         }
@@ -602,7 +603,7 @@ public class PeerService {
     private void sendReleaseMessageToPeers() throws JsonProcessingException, InterruptedException {
         String message = JSONHelper.makeJson(Type.RELEASE, myIP, listenPort).toJSONString();
         for (Client client: connectedClients) {
-            Thread.sleep(WAIT);
+            TimeUnit.SECONDS.sleep(WAIT);
             System.out.println("Sent Release Message to Client: " + config.getProcessIds().get(client.getHost()));
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
         }
