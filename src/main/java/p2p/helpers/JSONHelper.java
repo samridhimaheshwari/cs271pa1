@@ -69,4 +69,13 @@ public class JSONHelper {
         jsonObject.put("port", port);
         return jsonObject;
     }
+
+    public static JSONObject makeRequestJson(Type type, String ip, int port, String request) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("type", type.name());
+        jsonObject.put("ip", ip);
+        jsonObject.put("port", port);
+        jsonObject.put("request", request);
+        return jsonObject;
+    }
 }
