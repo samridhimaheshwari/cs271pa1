@@ -1,6 +1,7 @@
 package p2p.app;
 
 import java.io.*;
+import java.net.Inet4Address;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -38,7 +39,7 @@ public class PeerService {
 
 
     public PeerService() throws IOException {
-
+        myIP = Inet4Address.getLocalHost().getHostAddress();
         config = CommonUtil.getConfig();
         pq = new PriorityQueue<>(Comparator.comparingInt(a -> a.getLamportClock().getClock()));
         requests = new HashMap();
@@ -51,7 +52,7 @@ public class PeerService {
         }
 
         lamportClock = new LamportClock(processId);
-        myIP = "169.231.195.21";
+
 
         // list of all clients (peers) connected to this host
         connectedClients = new ArrayList<Client>();
@@ -660,7 +661,7 @@ public class PeerService {
 
         if (listenSocket != null) {
             listenPort = listenSocket.getLocalPort();
-            myIP = "169.231.195.21";
+            myIP = Inet4Address.getLocalHost().getHostAddress();
             System.out.println("you are listening on port: " + listenPort);
             startServer();
         }

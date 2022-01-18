@@ -24,21 +24,7 @@ public class JSONHelper {
         }
     }
 
-    /**
-     * This is an overloaded method
-     * 
-     * @param type
-     *            the the purpose of this JSONO object (MESSAGE, CONNECT,
-     *            TERMINATE)
-     * @param ip
-     *            client's ip address
-     * @param port
-     *            client's port number
-     * @param message
-     *            the message you want to send to another client
-     * @return wrap all the parameters entered into a JSON object
-     */
-    @SuppressWarnings("unchecked")
+
     public static JSONObject makeJson(Type type, String ip, int port,
             String message) {
         JSONObject jsonObject = makeJson(type, ip, port);
