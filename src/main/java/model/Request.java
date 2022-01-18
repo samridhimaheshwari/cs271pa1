@@ -7,7 +7,13 @@ import java.io.Serializable;
 public class Request implements Serializable {
         LamportClock lamportClock;
 
+    public void setLamportClock(LamportClock lamportClock) {
+        this.lamportClock = lamportClock;
+    }
 
+    public Request() {
+
+    }
     public Request(LamportClock lamportClock) {
         this.lamportClock = lamportClock;
 
@@ -16,5 +22,7 @@ public class Request implements Serializable {
     public LamportClock getLamportClock() {
         return lamportClock;
     }
+
+
 
 }
