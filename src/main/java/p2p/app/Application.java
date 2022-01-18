@@ -9,7 +9,7 @@ public class Application {
         try {
             PeerService peerService = new PeerService();
             peerService.acceptInputs();
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
            System.out.println(e);
         }
 
