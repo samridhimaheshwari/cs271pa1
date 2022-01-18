@@ -162,7 +162,7 @@ public class PeerService {
                             synchronized (lock) {
                                 String requestString = JSONHelper.parse(jsonStr, "request");
                                 ObjectMapper mapper = new ObjectMapper();
-                                Request request = mapper.convertValue(requestString, Request.class);
+                                Request request = mapper.readValue(requestString, Request.class);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 replies.get(getIdFromRequest(request)).add(findPeer(ip, port));
                                 if (!pq.isEmpty()) {
@@ -183,12 +183,13 @@ public class PeerService {
                             synchronized (lock) {
                                 String requestString = JSONHelper.parse(jsonStr, "request");
                                 ObjectMapper mapper = new ObjectMapper();
-                                Request request = mapper.convertValue(requestString, Request.class);
+                                Request request = mapper.readValue(requestString, Request.class);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 pq.add(request);
                                 Client peer = findPeer(ip, port);
                                 sendReplyToPeer(request, peer);
                             }
+                            break;
                         case RELEASE:
                             synchronized (lock) {
                                 pq.poll();
@@ -203,8 +204,8 @@ public class PeerService {
                                         CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
                                     }
                                 }
-                                break;
                             }
+                            break;
                         case TERMINATE:
                             Client peer = findPeer(ip, port);
                             CommonUtil.displayTerminateMessage(ip, port);
