@@ -151,7 +151,7 @@ public class PeerService {
                             sendReleaseMessageToPeers();
                             if (head!=null) {
                                 m = requests.get(getIdFromClock(head));
-                                if (head.getProcessId() == lamportClock.getProcessId()) {
+                                if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                     lamportClock.setClock(lamportClock.getClock() + 1);
                                     if (m.getType() == Type.BALANCE) {
                                         CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
@@ -170,7 +170,7 @@ public class PeerService {
                                 replies.get(getIdFromClock(request.getLamportClock())).add(findPeer(ip, port));
                                 if (!pq.isEmpty()) {
                                     head = pq.peek();
-                                    if (replies.get(getIdFromClock(head)).size() == connectedClients.size() && head.getProcessId() == lamportClock.getProcessId()) {
+                                    if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
                                         if (requests.get(getIdFromClock(head)).getType() == Type.BALANCE) {
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
@@ -200,7 +200,7 @@ public class PeerService {
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 if (head!=null) {
                                     m = requests.get(getIdFromClock(head));
-                                    if (head.getProcessId() == lamportClock.getProcessId()) {
+                                    if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
                                         if (m.getType() == Type.BALANCE) {
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
