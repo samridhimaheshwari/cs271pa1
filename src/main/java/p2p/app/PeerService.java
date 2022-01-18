@@ -245,7 +245,7 @@ public class PeerService {
             switch (option) {
                 case "start":
                     if (listenSocket == null)
-                        initChat(choice);
+                        initPeer(choice);
                     else
                         System.out.println("Error: you can only listen to one port at a time");
                     break;
@@ -727,7 +727,7 @@ public class PeerService {
      * @param choice user command line input
      * @throws IOException
      */
-    private void initChat(String choice) throws IOException {
+    private void initPeer(String choice) throws IOException {
         listenSocket = createListenSocket(choice);
 
         if (listenSocket != null) {

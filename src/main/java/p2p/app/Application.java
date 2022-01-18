@@ -7,8 +7,8 @@ public class Application {
     public static void main(String[] args) {
 
         try {
-            PeerService chat = new PeerService();
-            chat.acceptInputs();
+            PeerService peerService = new PeerService();
+            peerService.acceptInputs();
         } catch (IOException e) {
            System.out.println(e);
         }
