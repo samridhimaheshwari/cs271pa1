@@ -94,7 +94,7 @@ public class BlockchainMaster {
                             CommonUtil.displayConnectSuccess(jsonStr);
                             addClient(ip, port);
                             break;
-                        case TRANSACT:
+                        case TRANSACTION:
                             int amount = Integer.parseInt(JSONHelper.parse(jsonStr, "amount"));
                             String receiver = JSONHelper.parse(jsonStr, "receiver");
                             if(this.blockchain.getBalance(clientId)>=amount){
