@@ -154,7 +154,6 @@ public class PeerService {
                             sendReleaseMessageToPeers();
                             if(!pq.isEmpty()) {
                                 head = pq.peek();
-                                System.out.println(pq.peek().getClock() +" " + pq.peek().getProcessId() + "-- in message");
                                 if (head != null) {
                                     m = requests.get(getIdFromClock(head));
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
@@ -178,7 +177,6 @@ public class PeerService {
                                 replies.get(getIdFromClock(request.getLamportClock())).add(findPeer(ip, port));
                                 System.out.println("Received Reply from: " + config.getProcessIds().get(ip));
                                 if (!pq.isEmpty()) {
-                                    System.out.println(pq.peek().getClock() +" " + pq.peek().getProcessId() + "-- in reply");
                                     head = pq.peek();
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
@@ -199,7 +197,6 @@ public class PeerService {
                                 Thread.sleep(WAIT);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 pq.add(new LamportClock(request.getLamportClock().getClock(), request.getLamportClock().getProcessId()));
-                                System.out.println(pq.peek().getClock() +" " + pq.peek().getProcessId() + "-- in request");
                                 Client peer = findPeer(ip, port);
                                 System.out.println("Received Request from: " + config.getProcessIds().get(ip));
                                 //
@@ -212,7 +209,6 @@ public class PeerService {
                                 System.out.println("Received Release from: " + config.getProcessIds().get(ip));
                             if(!pq.isEmpty()) {
                                 head = pq.peek();
-                                System.out.println(pq.peek().getClock() +" " + pq.peek().getProcessId() + "-- in release");
                                 if (head != null) {
                                     m = requests.get(getIdFromClock(head));
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
@@ -570,7 +566,6 @@ public class PeerService {
                 lamportClock.setClock(lamportClock.getClock() + 1);
                 Request request = new Request(lamportClock);
                 pq.add(new LamportClock(lamportClock.getClock(), lamportClock.getProcessId()));
-                System.out.println(pq.peek().getClock() +" " + pq.peek().getProcessId() + "-- in initrequest");
                 String id = getIdFromClock(request.getLamportClock());
                 if (Type.getTypeFrom(args[0]) == Type.BALANCE) {
                     requests.put(id, new Message(Type.BALANCE));
