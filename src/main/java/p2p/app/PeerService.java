@@ -169,7 +169,6 @@ public class PeerService {
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 replies.get(getIdFromClock(request.getLamportClock())).add(findPeer(ip, port));
                                 System.out.println("Received Reply from: " + config.getProcessIds().get(ip));
-                                System.out.print("-> ");
                                 if (!pq.isEmpty()) {
                                     head = pq.peek();
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
@@ -195,7 +194,6 @@ public class PeerService {
                                 pq.add(new LamportClock(request.getLamportClock().getClock(), request.getLamportClock().getProcessId()));
                                 Client peer = findPeer(ip, port);
                                 System.out.println("Received Request from: " + config.getProcessIds().get(ip));
-                                System.out.print("-> ");
                                 sendReplyToPeer(request, peer);
                             }
                             break;
@@ -205,7 +203,6 @@ public class PeerService {
                                 head = pq.peek();
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 System.out.println("Received Release from: " + config.getProcessIds().get(ip));
-                                System.out.print("-> ");
                                 if (head!=null) {
                                     m = requests.get(getIdFromClock(head));
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
@@ -243,7 +240,6 @@ public class PeerService {
         String message = JSONHelper.makeRequestJson(Type.REPLY, myIP, listenPort, objectMapper.writeValueAsString(request)).toJSONString();
         Thread.sleep(WAIT);
         System.out.println("Sent Reply Message to Client: " + config.getProcessIds().get(peer.getHost()));
-        System.out.print("-> ");
         CommonUtil.sendMessage(peerOutputMap.get(peer), message);
     }
 
@@ -599,7 +595,6 @@ public class PeerService {
         for (Client client: connectedClients) {
             Thread.sleep(WAIT);
             System.out.println("Sent Request Message to Client: " + config.getProcessIds().get(client.getHost()));
-            System.out.print("-> ");
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
         }
     }
@@ -609,7 +604,6 @@ public class PeerService {
         for (Client client: connectedClients) {
             Thread.sleep(WAIT);
             System.out.println("Sent Release Message to Client: " + config.getProcessIds().get(client.getHost()));
-            System.out.print("-> ");
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
         }
     }

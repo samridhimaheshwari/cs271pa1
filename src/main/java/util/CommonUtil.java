@@ -19,7 +19,6 @@ public class CommonUtil {
     public static void displayTerminateMessage(String ip, int port) {
         System.out.println();
         System.out.println("Peer [ip: " + ip + " port: " + port + "] has terminated the connection");
-        System.out.print("-> ");
     }
 
     /**
@@ -34,7 +33,6 @@ public class CommonUtil {
         String ip = JSONHelper.parse(jsonStr, "ip");
         int port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
         System.out.println("\nPeer [ip: " + ip + ", port: " + port + "] connects to you");
-        System.out.print("-> ");
     }
 
     /**
@@ -51,7 +49,6 @@ public class CommonUtil {
 
         // "->" doesn't display after the user receive a
         // message
-        System.out.print("-> ");
     }
 
 
