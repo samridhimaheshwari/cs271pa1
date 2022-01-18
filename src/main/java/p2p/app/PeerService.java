@@ -27,6 +27,7 @@ public class PeerService {
     private String myIP;
     private ServerSocket listenSocket;
     private final int MAX_CONNECTIONS = 3;
+    private final int WAIT = 1000;
     private BufferedReader input;
     private Map<Client, DataOutputStream> peerOutputMap;
     private Server server;
@@ -80,10 +81,7 @@ public class PeerService {
 
     }
 
-    /**
-     * start the server, listen to connection, and respond to user's command
-     * line input.
-     */
+
     private void startServer() throws IOException {
 
         // "serve" each client (peer) on a separate thread
@@ -154,8 +152,10 @@ public class PeerService {
                                 if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                     lamportClock.setClock(lamportClock.getClock() + 1);
                                     if (m.getType() == Type.BALANCE) {
+                                        Thread.sleep(WAIT);
                                         CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
                                     } else if (m.getType() == Type.TRANSACTION) {
+                                        Thread.sleep(WAIT);
                                         CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
                                     }
                                 }
@@ -173,9 +173,11 @@ public class PeerService {
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
                                         if (requests.get(getIdFromClock(head)).getType() == Type.BALANCE) {
+                                            Thread.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
                                         } else if (requests.get(getIdFromClock(head)).getType() == Type.TRANSACTION) {
                                             Message msg = requests.get(getIdFromClock(head));
+                                            Thread.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(msg.getAmount(), msg.getReceiver()));
                                         }
                                     }
@@ -203,8 +205,10 @@ public class PeerService {
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
                                         if (m.getType() == Type.BALANCE) {
+                                            Thread.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
                                         } else if (m.getType() == Type.TRANSACTION) {
+                                            Thread.sleep(WAIT);
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
                                         }
                                     }
@@ -222,13 +226,17 @@ public class PeerService {
                 }
             } catch (IOException e) {
                 System.out.println("Message: Connection drop");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
 
-    private void sendReplyToPeer(Request request, Client peer) throws JsonProcessingException {
+    private void sendReplyToPeer(Request request, Client peer) throws JsonProcessingException, InterruptedException {
         ObjectMapper objectMapper = new ObjectMapper();
         String message = JSONHelper.makeRequestJson(Type.REPLY, myIP, listenPort, objectMapper.writeValueAsString(request)).toJSONString();
+        System.out.println("Sent Reply Message to Client: " + config.getProcessIds().get(peer.getHost()));
+        Thread.sleep(WAIT);
         CommonUtil.sendMessage(peerOutputMap.get(peer), message);
     }
 
@@ -360,12 +368,7 @@ public class PeerService {
         }
     }
 
-    /**
-     * tells each peer to close their connection with this process; process
-     * closes all of its own connections.
-     *
-     * @throws IOException
-     */
+
     private void breakPeerConnections() throws IOException {
 
         // terminate each peer connection; notify them
@@ -383,30 +386,16 @@ public class PeerService {
         System.out.println("chat client close, good bye");
     }
 
-    /**
-     * remove the peer from all data structure
-     *
-     * @param peer
-     */
     private void removePeer(Client peer) {
         connectedClients.remove(peer);
         peerOutputMap.remove(peer);
     }
 
-    /**
-     * @return a JSON String that indicate to another peer (client) to connect
-     * to the host socket. For more information, see
-     * JSONHelper.makeJson()
-     */
     private String generateConnectJson() {
         return JSONHelper.makeJson(Type.CONNECT, myIP, listenPort).toJSONString();
     }
 
-    /**
-     * @return a JSON String that indicate to another peer (client)that they
-     * have received a message. For more information, see
-     * JSONHelper.makeJson()
-     */
+
     private String generateMessageJson(String message) {
         return JSONHelper.makeJson(Type.MESSAGE, myIP, listenPort, message).toJSONString();
     }
@@ -419,10 +408,6 @@ public class PeerService {
         return JSONHelper.makeJson(Type.TRANSACTION, myIP, listenPort, amount, receiver).toJSONString();
     }
 
-    /**
-     * @return a JSON String that indicate to another peer (client) to terminate
-     * the host socket. For more information, see JSONHelper.makeJson()
-     */
     private String generateTerminateJson() {
         return JSONHelper.makeJson(Type.TERMINATE, myIP, listenPort).toJSONString();
     }
@@ -432,13 +417,7 @@ public class PeerService {
         return id >= 0 && id < connectedClients.size();
     }
 
-    /**
-     * @param ip   the peer's ip address
-     * @param port the peer's port number
-     * @return the peer (from connectedPeers) with the corresponding ip and port
-     * number. if no peer exist with the corresponding information, will
-     * return null instead
-     */
+
     private Client findPeer(String ip, int port) {
         for (Client p : connectedClients)
             if (p.getHost().equals(ip) && p.getPort() == port)
@@ -453,14 +432,7 @@ public class PeerService {
         peerOutputMap.put(peer, new DataOutputStream(peer.getSocket().getOutputStream()));
     }
 
-    /**
-     * take the user's input and if it is valid (contains keyword "connect", ip,
-     * and a valid port) AND if the host has not exceeded MAX_CONNECTION,
-     * attempt to connect to the socket with the provided information
-     *
-     * @param userInput user command line input
-     * @throws IOException
-     */
+
     private void processClientsConnect(String userInput, Config config) throws IOException {
         HashMap<String, String> peers = config.getPeers();
 
@@ -539,32 +511,17 @@ public class PeerService {
 
     }
 
-    /**
-     * @param ip
-     * @param port
-     * @return true if the ip and port and not identical to the host AND not the
-     * same as another peers to which the host is connected to. in other
-     * words, all connection must be unique.
-     */
+
     public boolean isUniqueConnection(String ip, int port) {
         return !isSelfConnection(ip, port) && isUniquePeer(ip, port);
     }
 
-    /**
-     * @param ip
-     * @param port
-     * @return true if the ip and port is unique, not an "active" connection
-     */
+
     private boolean isUniquePeer(String ip, int port) {
         return findPeer(ip, port) == null;
     }
 
-    /**
-     * @param ip
-     * @param port
-     * @return true if the connection information is the host active open
-     * connection
-     */
+
     private boolean isSelfConnection(String ip, int port) {
         return ip.equals(myIP) && listenPort == port;
     }
@@ -617,6 +574,8 @@ public class PeerService {
                 e.printStackTrace();
             } catch (ArrayIndexOutOfBoundsException e) {
                 e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         } else {
             System.out.println("Error: Invalid format for 'send' command. See 'help' for details.");
@@ -627,35 +586,22 @@ public class PeerService {
         return lamportClock.getClock() + "." + lamportClock.getProcessId();
     }
 
-    private void sendRequestMessageToPeers(Request request) throws JsonProcessingException {
+    private void sendRequestMessageToPeers(Request request) throws JsonProcessingException, InterruptedException {
         ObjectMapper objectMapper = new ObjectMapper();
         String message = JSONHelper.makeRequestJson(Type.REQUEST, myIP, listenPort, objectMapper.writeValueAsString(request)).toJSONString();
         for (Client client: connectedClients) {
+            System.out.println("Sent Request Message to Client: " + config.getProcessIds().get(client.getHost()));
+            Thread.sleep(WAIT);
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
         }
     }
 
-    private void sendReleaseMessageToPeers() throws JsonProcessingException {
+    private void sendReleaseMessageToPeers() throws JsonProcessingException, InterruptedException {
         String message = JSONHelper.makeJson(Type.RELEASE, myIP, listenPort).toJSONString();
         for (Client client: connectedClients) {
+            System.out.println("Sent Release Message to Client: " + config.getProcessIds().get(client.getHost()));
+            Thread.sleep(WAIT);
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
-        }
-    }
-
-    private void sendTransactionRequest(String choice) {
-        if (server != null) {
-            try {
-                String[] args = choice.split(" ");
-                if (args.length == 3) {
-                    CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(Integer.parseInt(args[2]), args[1]));
-                } else {
-                    System.out.println("Error: Please select a valid peer id from the list command.");
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Error: Second argument should be a integer.");
-            }
-        } else {
-            System.out.println("Error: Invalid format for 'send' command. See 'help' for details.");
         }
     }
 
@@ -698,11 +644,7 @@ public class PeerService {
         }
     }
 
-    /**
-     * @param choice user command line input
-     * @return true if the user enter the correct amount of arguments (2) and
-     * the port number (second argument) is "valid"
-     */
+
     private boolean isValidPortArg(String choice) {
         String[] args = choice.split(" ");
 
@@ -721,12 +663,7 @@ public class PeerService {
         return true;
     }
 
-    /**
-     * assign listen port and initialize/start the server socket.
-     *
-     * @param choice user command line input
-     * @throws IOException
-     */
+
     private void initPeer(String choice) throws IOException {
         listenSocket = createListenSocket(choice);
 
