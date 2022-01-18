@@ -234,7 +234,7 @@ public class PeerService {
 
     // accept commands from the users
     public void acceptInputs() throws IOException {
-        System.out.println("Welcome to Chat 470");
+        System.out.println("Welcome to the Blockchain");
 
         while (true) {
             System.out.print("-> ");
@@ -243,7 +243,7 @@ public class PeerService {
             String option = choice.split(" ")[0].toLowerCase();
 
             switch (option) {
-                case "chat":
+                case "start":
                     if (listenSocket == null)
                         initChat(choice);
                     else
