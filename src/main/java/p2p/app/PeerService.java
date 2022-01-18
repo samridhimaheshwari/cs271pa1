@@ -149,13 +149,15 @@ public class PeerService {
                             head = pq.peek();
                             lamportClock.setClock(lamportClock.getClock() + 1);
                             sendReleaseMessageToPeers();
-                            m = requests.get(getIdFromClock(head));
-                            if(head.getProcessId() == lamportClock.getProcessId()){
-                                lamportClock.setClock(lamportClock.getClock() + 1);
-                                if (m.getType() == Type.BALANCE) {
-                                    CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
-                                } else if (m.getType() == Type.TRANSACTION) {
-                                    CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                            if (head!=null) {
+                                m = requests.get(getIdFromClock(head));
+                                if (head.getProcessId() == lamportClock.getProcessId()) {
+                                    lamportClock.setClock(lamportClock.getClock() + 1);
+                                    if (m.getType() == Type.BALANCE) {
+                                        CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                                    } else if (m.getType() == Type.TRANSACTION) {
+                                        CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                                    }
                                 }
                             }
                             break;
@@ -186,7 +188,7 @@ public class PeerService {
                                 ObjectMapper mapper = new ObjectMapper();
                                 Request request = mapper.readValue(requestString, Request.class);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
-                                pq.add(new LamportClock(lamportClock.getClock(), lamportClock.getProcessId()));
+                                pq.add(new LamportClock(request.getLamportClock().getClock(), request.getLamportClock().getProcessId()));
                                 Client peer = findPeer(ip, port);
                                 sendReplyToPeer(request, peer);
                             }
@@ -196,13 +198,15 @@ public class PeerService {
                                 pq.poll();
                                 head = pq.peek();
                                 lamportClock.setClock(lamportClock.getClock() + 1);
-                                m = requests.get(getIdFromClock(head));
-                                if(head.getProcessId() == lamportClock.getProcessId()){
-                                    lamportClock.setClock(lamportClock.getClock() + 1);
-                                    if (m.getType() == Type.BALANCE) {
-                                        CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
-                                    } else if (m.getType() == Type.TRANSACTION) {
-                                        CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                                if (head!=null) {
+                                    m = requests.get(getIdFromClock(head));
+                                    if (head.getProcessId() == lamportClock.getProcessId()) {
+                                        lamportClock.setClock(lamportClock.getClock() + 1);
+                                        if (m.getType() == Type.BALANCE) {
+                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                                        } else if (m.getType() == Type.TRANSACTION) {
+                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                                        }
                                     }
                                 }
                             }
