@@ -27,7 +27,7 @@ public class PeerService {
     private String myIP;
     private ServerSocket listenSocket;
     private final int MAX_CONNECTIONS = 3;
-    private final int WAIT = 1000;
+    private final int WAIT = 3000;
     private BufferedReader input;
     private Map<Client, DataOutputStream> peerOutputMap;
     private Server server;
