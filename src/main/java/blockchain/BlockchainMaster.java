@@ -45,6 +45,7 @@ public class BlockchainMaster {
 
     private void startServer() throws IOException {
 
+       new Thread(() -> {
         while (true) {
             try {
                 Socket connectionSocket = listenSocket.accept();
@@ -55,6 +56,7 @@ public class BlockchainMaster {
 
             }
         }
+       }).start();
 
     }
 
@@ -181,9 +183,68 @@ public class BlockchainMaster {
         clientOutputMap.remove(peer);
     }
 
+    public void acceptInputs() throws IOException {
+        System.out.println("Blockchain server");
+
+        while (true) {
+            System.out.print("-> ");
+            String choice = input.readLine();
+            // the first argument is the command
+            String option = choice.split(" ")[0].toLowerCase();
+
+            switch (option) {
+                case "myip":
+                    System.out.println("My IP Address: " + myIP);
+                    break;
+                case "myport":
+                    if (listenSocket == null)
+                        System.out.println("Error: you are not connected");
+                    else
+                        System.out.println("Listening on port: " + listenPort);
+                    break;
+                case "list":
+                    if (listenSocket == null)
+                        System.out.println("Error: you are not connected");
+                    else
+                        displayList();
+                    break;
+                case "show-blockchain":
+                    if (listenSocket == null)
+                        System.out.println("Error: you are not connected");
+                    else
+                        displayBlockchain();
+                    break;
+
+                default:
+                    System.out.println("not a recognized command");
+            }
+        }
+    }
+
+
+
+    private void displayList() {
+        if (connectedClients.isEmpty())
+            System.out.println("No client connected.");
+        else {
+            System.out.println("id:   IP Address     Port No.");
+            for (int i = 0; i < connectedClients.size(); i++) {
+                Client peer = connectedClients.get(i);
+                System.out.println((i + 1) + "    " + peer.getHost() + "     " + peer.getPort());
+            }
+            System.out.println("Total clients: " + connectedClients.size());
+        }
+    }
+
+    private void displayBlockchain() {
+        System.out.println("Now displaying blockchain");
+        this.blockchain.print();
+    }
+
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(1234);
         BlockchainMaster server = new BlockchainMaster(serverSocket);
         server.startServer();
+        server.acceptInputs();
     }
 }

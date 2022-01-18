@@ -11,7 +11,8 @@ public class Blockchain {
     }
 
     public void addBlock(String sender, String receiver, int amount){
-        System.out.println("Transaction for sender " + sender + " to "+ receiver + " for amount "+ amount);
+        System.out.println("Processing transaction for sender " + sender + " to "+ receiver + " for amount "+ amount);
+        System.out.println();
         byte[] previousHash;
         if(blocks.size()-1>=0) {
              previousHash = blocks.get(blocks.size() - 1).getPreviousHash();
@@ -26,6 +27,7 @@ public class Blockchain {
 
     public int getBalance(String s){
         System.out.println("Checking balance for client " + s);
+        System.out.println();
         int balance = 10;
         for(int i=0; i< blocks.size(); i++){
             int amount = blocks.get(i).getAmount();
@@ -37,5 +39,14 @@ public class Blockchain {
             }
         }
         return balance;
+    }
+
+    public void print(){
+        for(int i=0; i<blocks.size(); i++){
+            System.out.println("block " + i);
+            System.out.println("sender "+ blocks.get(i).getSender());
+            System.out.println("receiver "+ blocks.get(i).getReceiver());
+            System.out.println("amount "+ blocks.get(i).getAmount()+"$");
+        }
     }
 }
