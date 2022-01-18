@@ -33,7 +33,7 @@ public class PeerService {
     private static Integer count = 0;
     private Map<String, Message> requests;
     private Map<String, ArrayList<Client>> replies;
-    private PriorityQueue<Request> pq;
+    private PriorityQueue<LamportClock> pq;
     private LamportClock lamportClock;
 
 
@@ -41,15 +41,15 @@ public class PeerService {
 
         myIP = "169.231.195.21";
         config = CommonUtil.getConfig();
-        pq = new PriorityQueue<>(new Comparator<Request>() {
+        pq = new PriorityQueue<>(new Comparator<LamportClock>() {
             @Override
-            public int compare(Request a, Request b) {
-                if(a.getLamportClock().getClock() < b.getLamportClock().getClock()){
+            public int compare(LamportClock a, LamportClock b) {
+                if(a.getClock() < b.getClock()){
                     return -1;
-                } else if(a.getLamportClock().getClock() > b.getLamportClock().getClock()){
+                } else if(a.getClock() > b.getClock()){
                     return 1;
                 } else{
-                    if(a.getLamportClock().getProcessId()<b.getLamportClock().getProcessId()){
+                    if(a.getProcessId()<b.getProcessId()){
                         return -1;
                     } else{
                         return 1;
@@ -132,7 +132,7 @@ public class PeerService {
                     String ip = JSONHelper.parse(jsonStr, "ip");
                     int port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
                     Message m;
-                    Request head;
+                    LamportClock head;
 
                     // each JSON string received/written can be of 3 types
                     Type type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
@@ -148,8 +148,8 @@ public class PeerService {
                             head = pq.peek();
                             lamportClock.setClock(lamportClock.getClock() + 1);
                             sendReleaseMessageToPeers();
-                            m = requests.get(getIdFromRequest(head));
-                            if(head.getLamportClock().getProcessId() == lamportClock.getProcessId()){
+                            m = requests.get(getIdFromClock(head));
+                            if(head.getProcessId() == lamportClock.getProcessId()){
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 if (m.getType() == Type.BALANCE) {
                                     CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
@@ -164,15 +164,15 @@ public class PeerService {
                                 ObjectMapper mapper = new ObjectMapper();
                                 Request request = mapper.readValue(requestString, Request.class);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
-                                replies.get(getIdFromRequest(request)).add(findPeer(ip, port));
+                                replies.get(getIdFromClock(request.getLamportClock())).add(findPeer(ip, port));
                                 if (!pq.isEmpty()) {
                                     head = pq.peek();
-                                    if (replies.get(getIdFromRequest(head)).size() == connectedClients.size() && head.getLamportClock().getProcessId() == lamportClock.getProcessId()) {
+                                    if (replies.get(getIdFromClock(head)).size() == connectedClients.size() && head.getProcessId() == lamportClock.getProcessId()) {
                                         lamportClock.setClock(lamportClock.getClock() + 1);
-                                        if (requests.get(getIdFromRequest(head)).getType() == Type.BALANCE) {
+                                        if (requests.get(getIdFromClock(head)).getType() == Type.BALANCE) {
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
-                                        } else if (requests.get(getIdFromRequest(head)).getType() == Type.TRANSACTION) {
-                                            Message msg = requests.get(getIdFromRequest(head));
+                                        } else if (requests.get(getIdFromClock(head)).getType() == Type.TRANSACTION) {
+                                            Message msg = requests.get(getIdFromClock(head));
                                             CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(msg.getAmount(), msg.getReceiver()));
                                         }
                                     }
@@ -185,7 +185,7 @@ public class PeerService {
                                 ObjectMapper mapper = new ObjectMapper();
                                 Request request = mapper.readValue(requestString, Request.class);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
-                                pq.add(request);
+                                pq.add(new LamportClock(lamportClock.getClock(), lamportClock.getProcessId()));
                                 Client peer = findPeer(ip, port);
                                 sendReplyToPeer(request, peer);
                             }
@@ -195,8 +195,8 @@ public class PeerService {
                                 pq.poll();
                                 head = pq.peek();
                                 lamportClock.setClock(lamportClock.getClock() + 1);
-                                m = requests.get(getIdFromRequest(head));
-                                if(head.getLamportClock().getProcessId() == lamportClock.getProcessId()){
+                                m = requests.get(getIdFromClock(head));
+                                if(head.getProcessId() == lamportClock.getProcessId()){
                                     lamportClock.setClock(lamportClock.getClock() + 1);
                                     if (m.getType() == Type.BALANCE) {
                                         CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
@@ -594,8 +594,8 @@ public class PeerService {
                 //add in request queue
                 lamportClock.setClock(lamportClock.getClock() + 1);
                 Request request = new Request(lamportClock);
-                pq.add(request);
-                String id = getIdFromRequest(request);
+                pq.add(new LamportClock(lamportClock.getClock(), lamportClock.getProcessId()));
+                String id = getIdFromClock(request.getLamportClock());
                 if (Type.getTypeFrom(args[0]) == Type.BALANCE) {
                     requests.put(id, new Message(Type.BALANCE));
                 } else if (Type.getTypeFrom(args[0]) == Type.TRANSACTION)  {
@@ -618,8 +618,8 @@ public class PeerService {
         }
     }
 
-    private String getIdFromRequest(Request request) {
-        return request.getLamportClock().getClock() + "." + request.getLamportClock().getProcessId();
+    private String getIdFromClock(LamportClock lamportClock) {
+        return lamportClock.getClock() + "." + lamportClock.getProcessId();
     }
 
     private void sendRequestMessageToPeers(Request request) throws JsonProcessingException {
