@@ -43,7 +43,7 @@ public class Blockchain {
 
     }
 
-    private void print(){
+    public void print(){
         for(int i=0; i<blocks.size(); i++){
             System.out.println("block " + i);
             System.out.println("sender "+ blocks.get(i).getSender());
