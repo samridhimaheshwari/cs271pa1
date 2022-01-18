@@ -131,7 +131,7 @@ public class PeerService {
                     }
 
                     String ip = JSONHelper.parse(jsonStr, "ip");
-                    int port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
+                    int port = Integer.parseInt(JSONHelper.parse(jsonStr, "port"));
                     Message m;
                     LamportClock head;
 
