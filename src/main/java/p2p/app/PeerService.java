@@ -1,6 +1,7 @@
 package p2p.app;
 
 import java.io.*;
+import java.net.Inet4Address;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -38,7 +39,7 @@ public class PeerService {
 
 
     public PeerService() throws IOException {
-        myIP = "169.231.195.21";
+        myIP = Inet4Address.getLocalHost().getHostAddress();
         config = CommonUtil.getConfig();
         pq = new PriorityQueue<>(new Comparator<LamportClock>() {
             @Override
@@ -82,10 +83,8 @@ public class PeerService {
         new Thread(() -> {
             while (true) {
                 try {
-                    // wait for a peer to connect
                     Socket connectionSocket = listenSocket.accept();
 
-                    // once there is a connection, serve them on thread
                     new Thread(new PeerHandler(connectionSocket)).start();
 
                 } catch (IOException e) {
@@ -280,7 +279,6 @@ public class PeerService {
 
 
 
-    // display the list of peers that are connected to the host
     private void displayList() {
         if (connectedClients.isEmpty())
             System.out.println("No peers connected.");
@@ -295,7 +293,6 @@ public class PeerService {
     }
 
 
-    // create a socket, connect to peer
     private void connect(String ip, int port, boolean isServerConnection) throws IOException {
 
         int attempts = 0;
@@ -303,7 +300,6 @@ public class PeerService {
         final int SLEEP_TIME = 1000;
         Socket peerSocket = null;
 
-        // try to connect but will stop after MAX_ATTEMPTS
         do {
             try {
                 peerSocket = new Socket(ip, port);
@@ -318,7 +314,6 @@ public class PeerService {
             }
         } while (peerSocket == null && attempts < MAX_ATTEMPTS);
 
-        // add (save) the socket so they can be use later
         if (attempts >= MAX_ATTEMPTS) {
             System.out.println("connection was unsuccessful, please try again later");
         } else {
@@ -326,12 +321,10 @@ public class PeerService {
             Client peer = new Client(ip, port);
             connectedClients.add(peer);
 
-            // map this peer to an output stream
 
             peerOutputMap.put(peer, new DataOutputStream(peerSocket.getOutputStream()));
 
-            // tell the peer your host address and port number
-            // tell the peer to connect to you
+
             CommonUtil.sendMessage(peerOutputMap.get(peer), generateConnectJson());
         }
     }
@@ -346,11 +339,6 @@ public class PeerService {
         return JSONHelper.makeJson(Type.CONNECT, myIP, listenPort).toJSONString();
     }
 
-
-    private String generateMessageJson(String message) {
-        return JSONHelper.makeJson(Type.MESSAGE, myIP, listenPort, message).toJSONString();
-    }
-
     private String generateBalanceJson() {
         return JSONHelper.makeJson(Type.BALANCE, myIP, listenPort).toJSONString();
     }
@@ -358,16 +346,6 @@ public class PeerService {
     private String generateTransactionJson(int amount, String receiver) {
         return JSONHelper.makeJson(Type.TRANSACTION, myIP, listenPort, amount, receiver).toJSONString();
     }
-
-    private String generateTerminateJson() {
-        return JSONHelper.makeJson(Type.TERMINATE, myIP, listenPort).toJSONString();
-    }
-
-    // id = index, thus 0 to size() - 1
-    private boolean isValidPeer(int id) {
-        return id >= 0 && id < connectedClients.size();
-    }
-
 
     private Client findPeer(String ip, int port) {
         for (Client p : connectedClients)
@@ -407,8 +385,6 @@ public class PeerService {
 
     private void processServerConnect() throws IOException {
 
-        // all tests passed, connect to the peer
-        //get IP and PORT from config
         String ip = config.getServerIp();
         Integer port = config.getServerPort();
         int attempts = 0;
@@ -416,7 +392,6 @@ public class PeerService {
         final int SLEEP_TIME = 1000;
         Socket serverSocket = null;
 
-        // try to connect but will stop after MAX_ATTEMPTS
         do {
             try {
                 serverSocket = new Socket(config.getServerIp(), config.getServerPort());
@@ -432,20 +407,15 @@ public class PeerService {
             }
         } while (serverSocket == null && attempts < MAX_ATTEMPTS);
 
-        // add (save) the socket so they can be use later
         if (attempts >= MAX_ATTEMPTS) {
             System.out.println("connection was unsuccessful, please try again later");
         } else {
             System.out.println("connected to master server with IP: " + ip + "and port: " + port);
 
-            // map this peer to an output stream
-
             DataOutputStream serverOutputStream = new DataOutputStream(serverSocket.getOutputStream());
 
             this.server = new Server(ip, port, serverOutputStream, serverSocket);
 
-            // tell the peer your host address and port number
-            // tell the peer to connect to you
             CommonUtil.sendMessage(serverOutputStream, generateConnectJson());
         }
 
@@ -466,27 +436,6 @@ public class PeerService {
         return ip.equals(myIP) && listenPort == port;
     }
 
-
-    private void processSend(String userInput) {
-        String[] args = userInput.split(" ");
-        if (args.length >= 3) {
-            try {
-                int id = Integer.valueOf(args[1]) - 1;
-                if (isValidPeer(id)) {
-                    String msg = "";
-                    for (int i = 2; i < args.length; i++)
-                        msg += args[i] + " ";
-                    CommonUtil.sendMessage(peerOutputMap.get(connectedClients.get(id)), generateMessageJson(msg));
-                } else {
-                    System.out.println("Error: Please select a valid peer id from the list command.");
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Error: Second argument should be a integer.");
-            }
-        } else {
-            System.out.println("Error: Invalid format for 'send' command. See 'help' for details.");
-        }
-    }
 
     private void initRequest(String choice) {
         if (server != null) {
@@ -563,13 +512,11 @@ public class PeerService {
     private boolean isValidPortArg(String choice) {
         String[] args = choice.split(" ");
 
-        // check if the argument length is 2
         if (args.length != 2) {
             System.out.println("invalid arguments: given: " + args.length + " expected: 2");
             return false;
         }
 
-        // check if the port argument is valid
         if (!Validator.isValidPort(args[1])) {
             System.out.println("invalid port number");
             return false;
@@ -584,7 +531,7 @@ public class PeerService {
 
         if (listenSocket != null) {
             listenPort = listenSocket.getLocalPort();
-            myIP = "169.231.195.21";
+            myIP = Inet4Address.getLocalHost().getHostAddress();
             System.out.println("you are listening on port: " + listenPort);
             startServer();
         }
