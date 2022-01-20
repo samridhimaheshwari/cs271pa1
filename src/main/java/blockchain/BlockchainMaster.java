@@ -34,12 +34,10 @@ public class BlockchainMaster {
         listenSocket = serverSocket;
         myIP = Inet4Address.getLocalHost().getHostAddress();
 
-        // list of all clients (peers) connected to this host
         connectedClients = new ArrayList<Client>();
 
         input = new BufferedReader(new InputStreamReader(System.in));
 
-        // map a peer to an output stream
         clientOutputMap = new HashMap<Client, DataOutputStream>();
     }
 
@@ -49,7 +47,6 @@ public class BlockchainMaster {
         while (true) {
             try {
                 Socket connectionSocket = listenSocket.accept();
-                // once there is a connection, serve them on thread
                 new Thread(new ClientHandler(connectionSocket, blockchain)).start();
 
             } catch (IOException e) {
@@ -75,12 +72,10 @@ public class BlockchainMaster {
             try {
                 BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
-                // read all messages sent to the host
                 while (true) {
                     String jsonStr = input.readLine();
 
-                    // when the other end of the input stream is closed,
-                    // will received null; when null, close thread
+
                     if (jsonStr == null) {
                         return;
                     }
@@ -189,7 +184,6 @@ public class BlockchainMaster {
         while (true) {
             System.out.print("-> ");
             String choice = input.readLine();
-            // the first argument is the command
             String option = choice.split(" ")[0].toLowerCase();
 
             switch (option) {
