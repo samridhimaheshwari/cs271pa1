@@ -1,12 +1,9 @@
 package p2p.app;
 
 import java.io.*;
-import java.net.Inet4Address;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,7 +38,7 @@ public class PeerService {
 
 
     public PeerService() throws IOException {
-        myIP = Inet4Address.getLocalHost().getHostAddress();
+        myIP = "169.231.195.21";
         config = CommonUtil.getConfig();
         pq = new PriorityQueue<>(new Comparator<LamportClock>() {
             @Override
@@ -70,13 +67,10 @@ public class PeerService {
 
         lamportClock = new LamportClock(processId);
 
-
-        // list of all clients (peers) connected to this host
         connectedClients = new ArrayList<Client>();
 
         input = new BufferedReader(new InputStreamReader(System.in));
 
-        // map a peer to an output stream
         peerOutputMap = new HashMap<Client, DataOutputStream>();
 
 
@@ -85,7 +79,6 @@ public class PeerService {
 
     private void startServer() throws IOException {
 
-        // "serve" each client (peer) on a separate thread
         new Thread(() -> {
             while (true) {
                 try {
@@ -102,8 +95,7 @@ public class PeerService {
         }).start();
     }
 
-    // open an IO stream for each peer connected to the host
-    // display all the messages send to the host by that peer
+
     public class PeerHandler implements Runnable {
 
         private Socket peerSocket;
@@ -119,12 +111,9 @@ public class PeerService {
             try {
                 BufferedReader input = new BufferedReader(new InputStreamReader(peerSocket.getInputStream()));
 
-                // read all messages sent to the host
                 while (true) {
                     String jsonStr = input.readLine();
 
-                    // when the other end of the input stream is closed,
-                    // will received null; when null, close thread
                     if (jsonStr == null) {
                         return;
                     }
@@ -137,7 +126,6 @@ public class PeerService {
                     ObjectMapper mapper = new ObjectMapper();
                     Request request;
 
-                    // each JSON string received/written can be of 3 types
                     Type type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
                     switch (type) {
                         case CONNECT:
@@ -199,12 +187,10 @@ public class PeerService {
                                 pq.add(new LamportClock(request.getLamportClock().getClock(), request.getLamportClock().getProcessId()));
                                 Client peer = findPeer(ip, port);
                                 System.out.println("Received Request from: " + config.getProcessIds().get(ip));
-                                //
                                 sendReplyToPeer(request, peer);
                             break;
                         case RELEASE:
                                 pq.poll();
-
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 System.out.println("Received Release from: " + config.getProcessIds().get(ip));
                             if(!pq.isEmpty()) {
@@ -248,14 +234,12 @@ public class PeerService {
         CommonUtil.sendMessage(peerOutputMap.get(peer), message);
     }
 
-    // accept commands from the users
     public void acceptInputs() throws IOException, InterruptedException {
         System.out.println("Welcome to the Blockchain");
 
         while (true) {
             System.out.print("-> ");
             String choice = input.readLine();
-            // the first argument is the command
             String option = choice.split(" ")[0].toLowerCase();
 
             switch (option) {
@@ -264,15 +248,6 @@ public class PeerService {
                         initPeer(choice);
                     else
                         System.out.println("Error: you can only listen to one port at a time");
-                    break;
-                case "myip":
-                    System.out.println("My IP Address: " + myIP);
-                    break;
-                case "myport":
-                    if (listenSocket == null)
-                        System.out.println("Error: you are not connected");
-                    else
-                        System.out.println("Listening on port: " + listenPort);
                     break;
                 case "connect-server":
                         processServerConnect();
@@ -289,12 +264,6 @@ public class PeerService {
                     else
                         displayList();
                     break;
-                case "send":
-                    if (listenSocket == null)
-                        System.out.println("Error: you are not connected");
-                    else
-                        processSend(choice);
-                    break;
                 case "balance":
                 case "transaction":
                     if (listenSocket == null)
@@ -302,16 +271,6 @@ public class PeerService {
                     else
                         Thread.sleep(WAIT);
                         initRequest(choice);
-                    break;
-                case "terminate":
-                    if (listenSocket == null)
-                        System.out.println("Error: you are not connected");
-                    else
-                        processTerminate(choice);
-                    break;
-                case "exit":
-                    breakPeerConnections();
-                    System.exit(0);
                     break;
                 default:
                     System.out.println("not a recognized command");
@@ -378,23 +337,6 @@ public class PeerService {
     }
 
 
-    private void breakPeerConnections() throws IOException {
-
-        // terminate each peer connection; notify them
-        for (Client peer : connectedClients) {
-            CommonUtil.sendMessage(peerOutputMap.get(peer), generateTerminateJson());
-            CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
-        }
-
-        // close each output stream
-        for (Entry<Client, DataOutputStream> e : peerOutputMap.entrySet()) {
-            e.getValue().close();
-        }
-
-        listenSocket.close();
-        System.out.println("chat client close, good bye");
-    }
-
     private void removePeer(Client peer) {
         connectedClients.remove(peer);
         peerOutputMap.remove(peer);
@@ -450,27 +392,16 @@ public class PeerService {
             String portString = map.getValue();
             Integer port = Integer.parseInt(portString);
 
-
-            // check if the user input is "valid"
             if (!Validator.isValidConnect(userInput, portString)) {
                 System.out.println("connect fail: invalid arguments");
-                return;
-            }
-
-            // check if connection limited is exceeded
-            if (connectedClients.size() >= MAX_CONNECTIONS) {
+            } else if (connectedClients.size() >= MAX_CONNECTIONS) {
                 System.out.println("connect fail: max connection");
-                return;
-            }
-
-            // check for self/duplicate connections
-            if (!isUniqueConnection(ip, port)) {
+            } else if (!isUniqueConnection(ip, port)) {
                 System.out.println("connect fail: no self or duplicate connection");
-                return;
+            } else {
+                connect(ip, port, false);
             }
 
-            // all tests passed, connect to the peer
-            connect(ip, port, false);
         }
     }
 
@@ -614,30 +545,6 @@ public class PeerService {
     }
 
 
-    private void processTerminate(String userInput) {
-        String[] args = userInput.split(" ");
-        if (args.length == 2) {
-            try {
-                int id = Integer.valueOf(args[1]) - 1;
-                if (isValidPeer(id)) {
-                    // notify peer that connection will be drop
-                    Client peer = connectedClients.get(id);
-                    CommonUtil.sendMessage(peerOutputMap.get(peer), generateTerminateJson());
-                    System.out.println("You dropped peer [ip: " + peer.getHost() + " port: " + peer.getPort() + "]");
-                    CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
-                    removePeer(peer);
-                } else {
-                    System.out.println("Error: Please select a valid peer id from the list command.");
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Error: Second argument should be a integer.");
-            }
-        } else {
-            System.out.println("Error: Invalid format for 'terminate' command. See 'help' for details.");
-        }
-    }
-
-
     private ServerSocket createListenSocket(String choice) throws IOException {
 
         if (isValidPortArg(choice)) {
@@ -677,7 +584,7 @@ public class PeerService {
 
         if (listenSocket != null) {
             listenPort = listenSocket.getLocalPort();
-            myIP = Inet4Address.getLocalHost().getHostAddress();
+            myIP = "169.231.195.21";
             System.out.println("you are listening on port: " + listenPort);
             startServer();
         }

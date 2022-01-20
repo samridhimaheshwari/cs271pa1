@@ -6,14 +6,7 @@ import org.json.simple.parser.ParseException;
 
 public class JSONHelper {
 
-    /**
-     * @param jsonString
-     *            a Stringify JSON object
-     * @param key
-     *            the JSON property name, key, that you want to retrive the
-     *            value of
-     * @return the value corresponding the to key in a String
-     */
+
     public static String parse(String jsonString, String key) {
         JSONParser parser = new JSONParser();
         try {
