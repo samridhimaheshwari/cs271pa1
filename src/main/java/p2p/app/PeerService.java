@@ -39,7 +39,7 @@ public class PeerService {
 
 
     public PeerService() throws IOException {
-        myIP = Inet4Address.getLocalHost().getHostAddress();
+        myIP = "169.231.195.21";
         config = CommonUtil.getConfig();
         pq = new PriorityQueue<>(new Comparator<LamportClock>() {
             @Override
@@ -59,14 +59,6 @@ public class PeerService {
         });
         requests = new HashMap();
         replies = new HashMap();
-        Integer processId = 0;
-        for(Map.Entry<String, Integer> entry: config.getProcessIds().entrySet()) {
-            if (myIP.equals(entry.getKey())) {
-                processId = entry.getValue();
-            }
-        }
-
-        lamportClock = new LamportClock(processId);
 
         connectedClients = new ArrayList<Client>();
 
@@ -124,6 +116,7 @@ public class PeerService {
                     String requestString;
                     ObjectMapper mapper = new ObjectMapper();
                     Request request;
+                    String id;
 
                     Type type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
                     switch (type) {
@@ -132,37 +125,40 @@ public class PeerService {
                             addPeer(ip, port);
                             break;
                         case MESSAGE:
-                            String message = JSONHelper.parse(jsonStr, "message");
-                            CommonUtil.displayMessage(ip, port, message);
-                            lamportClock.setClock(lamportClock.getClock() + 1);
-                            Thread.sleep(WAIT);
-                            pq.poll();
-                            lamportClock.setClock(lamportClock.getClock() + 1);
-                            sendReleaseMessageToPeers();
-                            if(!pq.isEmpty()) {
-                                head = pq.peek();
-                                if (head != null) {
-                                    m = requests.get(getIdFromClock(head));
-                                    if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
-                                        lamportClock.setClock(lamportClock.getClock() + 1);
-                                        if (m.getType() == Type.BALANCE) {
-                                            //
-                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
-                                        } else if (m.getType() == Type.TRANSACTION) {
-                                            //
-                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                            synchronized (lock) {
+                                String message = JSONHelper.parse(jsonStr, "message");
+                                CommonUtil.displayMessage(ip, port, message);
+                                lamportClock.setClock(lamportClock.getClock() + 1);
+                                Thread.sleep(WAIT);
+                                pq.poll();
+                                lamportClock.setClock(lamportClock.getClock() + 1);
+                                sendReleaseMessageToPeers();
+                                if (!pq.isEmpty()) {
+                                    head = pq.peek();
+                                    if (head != null) {
+                                        m = requests.get(getIdFromClock(head));
+                                        if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
+                                            lamportClock.setClock(lamportClock.getClock() + 1);
+                                            if (m.getType() == Type.BALANCE) {
+                                                //
+                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                                            } else if (m.getType() == Type.TRANSACTION) {
+                                                //
+                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                                            }
                                         }
                                     }
                                 }
                             }
-
                             break;
                         case REPLY:
+                            synchronized (lock) {
                                 requestString = JSONHelper.parse(jsonStr, "request");
                                 request = mapper.readValue(requestString, Request.class);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 replies.get(getIdFromClock(request.getLamportClock())).add(findPeer(ip, port));
-                                System.out.println("Received Reply from: " + config.getProcessIds().get(ip));
+                                id = ip + ":" + port;
+                                System.out.println("Received Reply from: " + config.getProcessIds().get(id));
                                 if (!pq.isEmpty()) {
                                     head = pq.peek();
                                     if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
@@ -177,44 +173,56 @@ public class PeerService {
                                         }
                                     }
                                 }
+                            }
                             break;
                         case REQUEST:
+                            synchronized (lock) {
                                 requestString = JSONHelper.parse(jsonStr, "request");
                                 request = mapper.readValue(requestString, Request.class);
                                 Thread.sleep(WAIT);
                                 lamportClock.setClock(lamportClock.getClock() + 1);
                                 pq.add(new LamportClock(request.getLamportClock().getClock(), request.getLamportClock().getProcessId()));
                                 Client peer = findPeer(ip, port);
-                                System.out.println("Received Request from: " + config.getProcessIds().get(ip));
+                                id = ip + ":" + port;
+                                System.out.println("Received Request from: " + config.getProcessIds().get(id));
+                                for (LamportClock l: pq) {
+                                    System.out.println(l.getClock() + "." + l.getProcessId());
+                                }
                                 sendReplyToPeer(request, peer);
+                            }
                             break;
                         case RELEASE:
+                            synchronized (lock) {
                                 pq.poll();
                                 lamportClock.setClock(lamportClock.getClock() + 1);
-                                System.out.println("Received Release from: " + config.getProcessIds().get(ip));
-                            if(!pq.isEmpty()) {
-                                head = pq.peek();
-                                if (head != null) {
-                                    m = requests.get(getIdFromClock(head));
-                                    if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
-                                        lamportClock.setClock(lamportClock.getClock() + 1);
-                                        if (m.getType() == Type.BALANCE) {
-                                            //
-                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
-                                        } else if (m.getType() == Type.TRANSACTION) {
-                                            //
-                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                                id = ip + ":" + port;
+                                System.out.println("Received Release from: " + config.getProcessIds().get(id));
+                                if (!pq.isEmpty()) {
+                                    head = pq.peek();
+                                    if (head != null) {
+                                        m = requests.get(getIdFromClock(head));
+                                        if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
+                                            lamportClock.setClock(lamportClock.getClock() + 1);
+                                            if (m.getType() == Type.BALANCE) {
+                                                //
+                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                                            } else if (m.getType() == Type.TRANSACTION) {
+                                                //
+                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
+                                            }
                                         }
                                     }
                                 }
                             }
                             break;
                         case TERMINATE:
-                            peer = findPeer(ip, port);
-                            CommonUtil.displayTerminateMessage(ip, port);
-                            CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
-                            removePeer(findPeer(ip, port));
-                            input.close();
+                            synchronized (lock) {
+                                Client peer = findPeer(ip, port);
+                                CommonUtil.displayTerminateMessage(ip, port);
+                                CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
+                                removePeer(findPeer(ip, port));
+                                input.close();
+                            }
                             return;
                     }
                 }
@@ -229,7 +237,8 @@ public class PeerService {
     private void sendReplyToPeer(Request request, Client peer) throws JsonProcessingException, InterruptedException {
         ObjectMapper objectMapper = new ObjectMapper();
         String message = JSONHelper.makeRequestJson(Type.REPLY, myIP, listenPort, objectMapper.writeValueAsString(request)).toJSONString();
-        System.out.println("Sent Reply Message to Client: " + config.getProcessIds().get(peer.getHost()));
+        String id = peer.getHost() + ":" + peer.getPort();
+        System.out.println("Sent Reply Message to Client: " + config.getProcessIds().get(id));
         CommonUtil.sendMessage(peerOutputMap.get(peer), message);
     }
 
@@ -366,7 +375,7 @@ public class PeerService {
         HashMap<String, String> peers = config.getPeers();
 
         for (Map.Entry<String, String> map: peers.entrySet()) {
-            String ip = map.getKey();
+            String ip = map.getKey().split(":")[0];
             String portString = map.getValue();
             Integer port = Integer.parseInt(portString);
 
@@ -479,8 +488,8 @@ public class PeerService {
         ObjectMapper objectMapper = new ObjectMapper();
         String message = JSONHelper.makeRequestJson(Type.REQUEST, myIP, listenPort, objectMapper.writeValueAsString(request)).toJSONString();
         for (Client client: connectedClients) {
-            //
-            System.out.println("Sent Request Message to Client: " + config.getProcessIds().get(client.getHost()));
+            String id = client.getHost() + ":" + client.getPort();
+            System.out.println("Sent Request Message to Client: " + config.getProcessIds().get(id));
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
         }
     }
@@ -488,7 +497,8 @@ public class PeerService {
     private void sendReleaseMessageToPeers() throws JsonProcessingException, InterruptedException {
         String message = JSONHelper.makeJson(Type.RELEASE, myIP, listenPort).toJSONString();
         for (Client client: connectedClients) {
-            System.out.println("Sent Release Message to Client: " + config.getProcessIds().get(client.getHost()));
+            String id = client.getHost() + ":" + client.getPort();
+            System.out.println("Sent Release Message to Client: " + config.getProcessIds().get(id));
             CommonUtil.sendMessage(peerOutputMap.get(client), message);
         }
     }
@@ -531,8 +541,16 @@ public class PeerService {
 
         if (listenSocket != null) {
             listenPort = listenSocket.getLocalPort();
-            myIP = Inet4Address.getLocalHost().getHostAddress();
+            myIP = "169.231.195.21";
             System.out.println("you are listening on port: " + listenPort);
+            Integer processId = 0;
+            for(Map.Entry<String, Integer> entry: config.getProcessIds().entrySet()) {
+                if (myIP.equals(entry.getKey().split(":")[0]) && listenPort == Integer.parseInt(entry.getKey().split(":")[1])) {
+                    processId = entry.getValue();
+                }
+            }
+
+            lamportClock = new LamportClock(processId);
             startServer();
         }
     }
