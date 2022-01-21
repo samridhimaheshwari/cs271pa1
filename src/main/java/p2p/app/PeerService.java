@@ -454,19 +454,19 @@ public class PeerService {
             // check if the user input is "valid"
             if (!Validator.isValidConnect(userInput, portString)) {
                 System.out.println("connect fail: invalid arguments");
-                return;
+                continue;
             }
 
-            // check if connection limited is exceeded
-            if (connectedClients.size() >= MAX_CONNECTIONS) {
-                System.out.println("connect fail: max connection");
-                return;
-            }
+//            // check if connection limited is exceeded
+//            if (connectedClients.size() >= MAX_CONNECTIONS) {
+//                System.out.println("connect fail: max connection");
+//                return;
+//            }
 
             // check for self/duplicate connections
             if (!isUniqueConnection(ip, port)) {
                 System.out.println("connect fail: no self or duplicate connection");
-                return;
+                continue;
             }
 
             // all tests passed, connect to the peer
