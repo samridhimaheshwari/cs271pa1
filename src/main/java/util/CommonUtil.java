@@ -78,8 +78,7 @@ public class CommonUtil {
 
     public static Config getConfig() throws FileNotFoundException {
         Yaml yaml = new Yaml();
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        File file = new File(classLoader.getResource("config.yaml").getFile());
+        File file = new File("/Users/samridhi/cs271pa1/src/main/config.yaml");
         InputStream inputStream = new FileInputStream(file);
         Map yamlMap = yaml.load(inputStream);
         ObjectMapper mapper = new ObjectMapper(); // jackson's objectmapper

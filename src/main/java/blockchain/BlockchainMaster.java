@@ -32,14 +32,12 @@ public class BlockchainMaster {
         config = CommonUtil.getConfig();
         blockchain = new Blockchain();
         listenSocket = serverSocket;
-        myIP = Inet4Address.getLocalHost().getHostAddress();
+        myIP = "169.231.195.21";
 
-        // list of all clients (peers) connected to this host
         connectedClients = new ArrayList<Client>();
 
         input = new BufferedReader(new InputStreamReader(System.in));
 
-        // map a peer to an output stream
         clientOutputMap = new HashMap<Client, DataOutputStream>();
     }
 
@@ -49,7 +47,6 @@ public class BlockchainMaster {
         while (true) {
             try {
                 Socket connectionSocket = listenSocket.accept();
-                // once there is a connection, serve them on thread
                 new Thread(new ClientHandler(connectionSocket, blockchain)).start();
 
             } catch (IOException e) {
@@ -75,22 +72,28 @@ public class BlockchainMaster {
             try {
                 BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
-                // read all messages sent to the host
                 while (true) {
                     String jsonStr = input.readLine();
 
-                    // when the other end of the input stream is closed,
-                    // will received null; when null, close thread
+                    Type type ;
+                    String ip;
+                    int port;
+                    String clientId;
+
                     if (jsonStr == null) {
                         return;
                     }
+                    try {
+                         ip = JSONHelper.parse(jsonStr, "ip");
+                         port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
 
-                    String ip = JSONHelper.parse(jsonStr, "ip");
-                    int port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
 
-                    // each JSON string received/written can be of 3 types
-                    Type type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
-                    String clientId = String.valueOf(config.getProcessIds().get(ip));
+                        // each JSON string received/written can be of 3 types
+                         type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
+                         clientId = String.valueOf(config.getProcessIds().get(ip + ":" + port));
+                    } catch (Exception e){
+                        continue;
+                    }
                     switch (type) {
                         case CONNECT:
                             CommonUtil.displayConnectSuccess(jsonStr);
@@ -101,13 +104,13 @@ public class BlockchainMaster {
                             String receiver = JSONHelper.parse(jsonStr, "receiver");
                             if(this.blockchain.getBalance(clientId)>=amount){
                                 this.blockchain.addBlock(clientId, receiver, amount);
-                                displayTransactSuccess(ip);
+                                displayTransactSuccess(ip, port);
                             } else{
-                                displayTransactionAborted(ip);
+                                displayTransactionAborted(ip, port);
                             }
                             break;
                         case BALANCE:
-                            displayBalanceMessage(ip, this.blockchain.getBalance(clientId));
+                            displayBalanceMessage(ip, port, this.blockchain.getBalance(clientId));
                             break;
                         case TERMINATE:
                             Client peer = findClient(ip, port);
@@ -118,6 +121,7 @@ public class BlockchainMaster {
                                 input.close();
                             }
                             return;
+
                     }
                 }
             } catch (IOException e) {
@@ -126,26 +130,26 @@ public class BlockchainMaster {
         }
     }
 
-    private void displayTransactSuccess(String ip) {
-        Client peer = findPeer(ip);
+    private void displayTransactSuccess(String ip, int port) {
+        Client peer = findPeer(ip, port);
         if (peer != null) CommonUtil.sendMessage(clientOutputMap.get(peer), generateTransactionSuccessful());
 
     }
 
-    private void displayTransactionAborted(String ip) {
-        Client peer = findPeer(ip);
+    private void displayTransactionAborted(String ip, int port) {
+        Client peer = findPeer(ip, port);
         CommonUtil.sendMessage(clientOutputMap.get(peer), generateTransactionAborted());
     }
 
-    private void displayBalanceMessage(String ip, int balance) {
-        Client peer = findPeer(ip);
+    private void displayBalanceMessage(String ip, int port, int balance) {
+        Client peer = findPeer(ip, port);
         CommonUtil.sendMessage(clientOutputMap.get(peer), generateBalanceString(balance));
     }
 
-    private Client findPeer(String ip) {
+    private Client findPeer(String ip, int port) {
         Client peer = null;
         for(Client p: clientOutputMap.keySet()){
-            if(p.getHost().equals(ip)){
+            if(p.getHost().equals(ip) && p.getPort() == port){
                 peer = p;
                 break;
             }
@@ -189,7 +193,6 @@ public class BlockchainMaster {
         while (true) {
             System.out.print("-> ");
             String choice = input.readLine();
-            // the first argument is the command
             String option = choice.split(" ")[0].toLowerCase();
 
             switch (option) {
@@ -242,7 +245,7 @@ public class BlockchainMaster {
     }
 
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(1234);
+        ServerSocket serverSocket = new ServerSocket(1223);
         BlockchainMaster server = new BlockchainMaster(serverSocket);
         server.startServer();
         server.acceptInputs();
