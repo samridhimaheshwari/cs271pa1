@@ -75,17 +75,25 @@ public class BlockchainMaster {
                 while (true) {
                     String jsonStr = input.readLine();
 
+                    Type type ;
+                    String ip;
+                    int port;
+                    String clientId;
 
                     if (jsonStr == null) {
                         return;
                     }
+                    try {
+                         ip = JSONHelper.parse(jsonStr, "ip");
+                         port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
 
-                    String ip = JSONHelper.parse(jsonStr, "ip");
-                    int port = Integer.valueOf(JSONHelper.parse(jsonStr, "port"));
 
-                    // each JSON string received/written can be of 3 types
-                    Type type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
-                    String clientId = String.valueOf(config.getProcessIds().get(ip+":"+port));
+                        // each JSON string received/written can be of 3 types
+                         type = Type.valueOf(JSONHelper.parse(jsonStr, "type"));
+                         clientId = String.valueOf(config.getProcessIds().get(ip + ":" + port));
+                    } catch (Exception e){
+                        continue;
+                    }
                     switch (type) {
                         case CONNECT:
                             CommonUtil.displayConnectSuccess(jsonStr);
@@ -113,6 +121,7 @@ public class BlockchainMaster {
                                 input.close();
                             }
                             return;
+
                     }
                 }
             } catch (IOException e) {

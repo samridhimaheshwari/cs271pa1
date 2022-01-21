@@ -1,7 +1,7 @@
 package p2p.helpers;
 
 public enum Type {
-    CONNECT("connect"), MESSAGE("message"), TERMINATE("terminate"), BALANCE("balance"), TRANSACTION("transaction"), REPLY("reply"), REQUEST("request"), RELEASE("release");
+    CONNECT("connect"), MESSAGE("message"), TERMINATE("terminate"), BALANCE("balance"), TRANSACTION("transaction"), REPLY("reply"), REQUEST("request"), RELEASE("release"), DROP("drop");
 
     String type;
 

@@ -36,6 +36,7 @@ public class PeerService {
     private Map<String, ArrayList<Client>> replies;
     private PriorityQueue<LamportClock> pq;
     private LamportClock lamportClock;
+    private final Object lock = new Object();
 
 
     public PeerService() throws IOException {
@@ -90,7 +91,7 @@ public class PeerService {
     public class PeerHandler implements Runnable {
 
         private Socket peerSocket;
-        private final Object lock = new Object();
+
 
 
         public PeerHandler(Socket socket) {
@@ -125,27 +126,25 @@ public class PeerService {
                             addPeer(ip, port);
                             break;
                         case MESSAGE:
-                            synchronized (lock) {
-                                String message = JSONHelper.parse(jsonStr, "message");
-                                CommonUtil.displayMessage(ip, port, message);
-                                lamportClock.setClock(lamportClock.getClock() + 1);
-                                Thread.sleep(WAIT);
-                                pq.poll();
-                                lamportClock.setClock(lamportClock.getClock() + 1);
-                                sendReleaseMessageToPeers();
-                                if (!pq.isEmpty()) {
-                                    head = pq.peek();
-                                    if (head != null) {
-                                        m = requests.get(getIdFromClock(head));
-                                        if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
-                                            lamportClock.setClock(lamportClock.getClock() + 1);
-                                            if (m.getType() == Type.BALANCE) {
-                                                //
-                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
-                                            } else if (m.getType() == Type.TRANSACTION) {
-                                                //
-                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
-                                            }
+                            String message = JSONHelper.parse(jsonStr, "message");
+                            CommonUtil.displayMessage(ip, port, message);
+                            lamportClock.setClock(lamportClock.getClock() + 1);
+                            Thread.sleep(WAIT);
+                            pq.poll();
+                            lamportClock.setClock(lamportClock.getClock() + 1);
+                            sendReleaseMessageToPeers();
+                            if (!pq.isEmpty()) {
+                                head = pq.peek();
+                                if (head != null) {
+                                    m = requests.get(getIdFromClock(head));
+                                    if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
+                                        lamportClock.setClock(lamportClock.getClock() + 1);
+                                        if (m.getType() == Type.BALANCE) {
+                                            //
+                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                                        } else if (m.getType() == Type.TRANSACTION) {
+                                            //
+                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
                                         }
                                     }
                                 }
@@ -176,53 +175,47 @@ public class PeerService {
                             }
                             break;
                         case REQUEST:
-                            synchronized (lock) {
-                                requestString = JSONHelper.parse(jsonStr, "request");
-                                request = mapper.readValue(requestString, Request.class);
-                                Thread.sleep(WAIT);
-                                lamportClock.setClock(lamportClock.getClock() + 1);
-                                pq.add(new LamportClock(request.getLamportClock().getClock(), request.getLamportClock().getProcessId()));
-                                Client peer = findPeer(ip, port);
-                                id = ip + ":" + port;
-                                System.out.println("Received Request from: " + config.getProcessIds().get(id));
-                                for (LamportClock l: pq) {
-                                    System.out.println(l.getClock() + "." + l.getProcessId());
-                                }
-                                sendReplyToPeer(request, peer);
+                            requestString = JSONHelper.parse(jsonStr, "request");
+                            request = mapper.readValue(requestString, Request.class);
+                            Thread.sleep(WAIT);
+                            lamportClock.setClock(lamportClock.getClock() + 1);
+                            pq.add(new LamportClock(request.getLamportClock().getClock(), request.getLamportClock().getProcessId()));
+                            Client peer = findPeer(ip, port);
+                            id = ip + ":" + port;
+                            System.out.println("Received Request from: " + config.getProcessIds().get(id));
+                            for (LamportClock l : pq) {
+                                System.out.println(l.getClock() + "." + l.getProcessId());
                             }
+                            sendReplyToPeer(request, peer);
                             break;
                         case RELEASE:
-                            synchronized (lock) {
-                                pq.poll();
-                                lamportClock.setClock(lamportClock.getClock() + 1);
-                                id = ip + ":" + port;
-                                System.out.println("Received Release from: " + config.getProcessIds().get(id));
-                                if (!pq.isEmpty()) {
-                                    head = pq.peek();
-                                    if (head != null) {
-                                        m = requests.get(getIdFromClock(head));
-                                        if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
-                                            lamportClock.setClock(lamportClock.getClock() + 1);
-                                            if (m.getType() == Type.BALANCE) {
-                                                //
-                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
-                                            } else if (m.getType() == Type.TRANSACTION) {
-                                                //
-                                                CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
-                                            }
+                            pq.poll();
+                            lamportClock.setClock(lamportClock.getClock() + 1);
+                            id = ip + ":" + port;
+                            System.out.println("Received Release from: " + config.getProcessIds().get(id));
+                            if (!pq.isEmpty()) {
+                                head = pq.peek();
+                                if (head != null) {
+                                    m = requests.get(getIdFromClock(head));
+                                    if (head.getProcessId() == lamportClock.getProcessId() && replies.get(getIdFromClock(head)).size() == connectedClients.size()) {
+                                        lamportClock.setClock(lamportClock.getClock() + 1);
+                                        if (m.getType() == Type.BALANCE) {
+                                            //
+                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateBalanceJson());
+                                        } else if (m.getType() == Type.TRANSACTION) {
+                                            //
+                                            CommonUtil.sendMessage(server.getDataOutputStream(), generateTransactionJson(m.getAmount(), m.getReceiver()));
                                         }
                                     }
                                 }
                             }
                             break;
                         case TERMINATE:
-                            synchronized (lock) {
-                                Client peer = findPeer(ip, port);
-                                CommonUtil.displayTerminateMessage(ip, port);
-                                CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
-                                removePeer(findPeer(ip, port));
-                                input.close();
-                            }
+                            peer = findPeer(ip, port);
+                            CommonUtil.displayTerminateMessage(ip, port);
+                            CommonUtil.terminateConnection(peer.getSocket(), peerOutputMap.get(peer));
+                            removePeer(findPeer(ip, port));
+                            input.close();
                             return;
                     }
                 }
